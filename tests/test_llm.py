@@ -53,3 +53,29 @@ def test_unknown_provider_reports_error(monkeypatch):
     llm = _reload(monkeypatch, "nope")
     res = llm.complete("s", "u", timeout=5)
     assert "unknown" in res.error.lower()
+
+
+def test_claude_prompt_via_stdin_not_argv(monkeypatch):
+    # Regression guard: `claude --allowedTools` is variadic and would swallow a
+    # trailing positional prompt (exit 1). The prompt must go on stdin.
+    llm = _reload(monkeypatch, "claude")
+
+    captured = {}
+
+    class FakeProc:
+        stdout = '{"ok": true}'
+        stderr = ""
+        returncode = 0
+
+    def fake_run(cmd, **kw):
+        captured["cmd"] = cmd
+        captured["input"] = kw.get("input")
+        return FakeProc()
+
+    monkeypatch.setattr(llm.shutil, "which", lambda _: "/usr/bin/claude")
+    monkeypatch.setattr(llm.subprocess, "run", fake_run)
+
+    llm.complete("SYSTEM", "THE_PROMPT", tools="Bash,Read", timeout=5)
+    assert captured["input"] == "THE_PROMPT"        # prompt on stdin
+    assert "THE_PROMPT" not in captured["cmd"]       # never a positional arg
+    assert "--allowedTools" in captured["cmd"]

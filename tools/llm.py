@@ -217,14 +217,21 @@ def _claude_cli(system_prompt, user_prompt, model, timeout, tools, cwd,
         cmd += ["--allowedTools", tools]
     if mcp_config and Path(mcp_config).exists():
         cmd += ["--mcp-config", str(mcp_config)]
-    cmd.append(user_prompt)
+    # The prompt goes on STDIN, never as a trailing positional: `--allowedTools`
+    # is variadic and would otherwise swallow the prompt as another tool name,
+    # making claude exit 1 with "Input must be provided ...".
 
     # Stream when a log path is given (orchestrator lanes); else simple capture.
     if stream_to is not None:
         stdout_buf: list[str] = []
         stderr_buf: list[str] = []
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True, cwd=str(cwd) if cwd else None)
+        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, text=True, cwd=str(cwd) if cwd else None)
+        try:
+            proc.stdin.write(user_prompt)
+            proc.stdin.close()
+        except Exception:
+            pass
         t_out = threading.Thread(target=_stream_pipe, args=(proc.stdout, stream_to, stdout_buf), daemon=True)
         t_err = threading.Thread(target=_stream_pipe, args=(proc.stderr, stderr_to, stderr_buf), daemon=True)
         t_out.start()
@@ -241,8 +248,8 @@ def _claude_cli(system_prompt, user_prompt, model, timeout, tools, cwd,
                          stderr_tail="".join(stderr_buf)[-2000:])
 
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
-                              cwd=str(cwd) if cwd else None)
+        proc = subprocess.run(cmd, input=user_prompt, capture_output=True, text=True,
+                              timeout=timeout, cwd=str(cwd) if cwd else None)
     except subprocess.TimeoutExpired:
         return LLMResult(error=f"timeout after {timeout}s")
     return LLMResult(text=proc.stdout or "", exit_code=proc.returncode,

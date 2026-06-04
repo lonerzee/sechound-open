@@ -1,0 +1,23 @@
+# Copy to config/targets.yaml (gitignored) and fill in YOUR authorized scope.
+# SecHound will refuse to run a hunt against a host not listed here.
+
+# Free-text reminder of who authorized this and the engagement window.
+authorization: "REQUIRED: describe your written authorization / RoE here"
+
+targets:
+  - name: example-staging
+    # Hosts in scope. Wildcards allowed. A request to anything not matching
+    # one of these is out of scope and will be rejected.
+    hosts:
+      - "<TARGET_HOST>"            # e.g. app.staging.example.test
+    # How the framework authenticates as a user. Pick one and supply the
+    # secret out-of-band (env var or a gitignored cookie jar) — NEVER inline.
+    auth:
+      type: cookie                 # cookie | bearer | none
+      jar: "config/example-staging.cookies"   # gitignored
+    # Optional: services within this target, for per-service isolation models.
+    services: []
+
+# Egress allow-list: IPs/CIDRs your tooling is permitted to reach. Anything
+# outside this is treated as a potential SSRF target, not a scan destination.
+egress_allow: []

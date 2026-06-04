@@ -1,0 +1,29 @@
+# Invariant-breaker input. Copy to config/invariants.yaml.
+#
+# Off-taxonomy hunting: instead of asking "is there an SSRF?", state the
+# security invariants the system CLAIMS to hold, then try to falsify each one.
+# Rank by how cheaply you can demonstrate a break.
+#
+# An invariant is broken when you can produce a request/observation that
+# contradicts it. The framework treats a demonstrated break as a finding seed.
+
+invariants:
+  - id: INV-001
+    statement: "A user in tenant A can never read an object owned by tenant B."
+    class: tenant-isolation
+    # How you'd try to falsify it (the test the framework will scaffold).
+    falsify: "Authenticate as A, request an object ID owned by B, expect 403/404."
+    # Two-jar requirement: cross-tenant claims need two authenticated identities.
+    requires: ["jar:tenantA", "jar:tenantB"]
+
+  - id: INV-002
+    statement: "Outbound URL fetches resolve only to the egress allow-list."
+    class: ssrf
+    falsify: "Supply a URL pointing at an internal/metadata IP, observe whether it is fetched."
+
+  - id: INV-003
+    statement: "No user-supplied string reaches an expression/template evaluator."
+    class: injection
+    falsify: "Inject a benign marker expression; check whether it is evaluated vs echoed."
+
+# Add your own. The point is to write down the assumptions and then attack them.

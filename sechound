@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Run SecHound straight from a clone (no install needed).
+exec python3 "$(dirname "$0")/tools/cli.py" "$@"

@@ -1,0 +1,38 @@
+# Example orchestrator task — fan a hunt out to parallel lanes.
+#   python3 tools/orchestrate.py engagements/<id> tasks/example.yaml
+#
+# Each lane runs a fresh LLM session (provider per $SECHOUND_LLM) with its own
+# system prompt and working dir. Findings emitted in ```json fences are
+# auto-ingested. Read-only lanes run in parallel; lanes with `validation: true`
+# serialize behind the live-mutation mutex.
+
+run_id: example-audit
+timeout: 900
+
+lanes:
+  - name: recon
+    prompt: |
+      You are a recon lane. Map the attack surface of the in-scope target:
+      enumerate routes/handlers, note auth tiers, and flag the highest-value
+      endpoints (writes, internal routes, anything touching other tenants).
+      Output a ranked list. Do NOT file findings — recon only.
+    user_input: "Map the public API surface and rank by attacker value."
+    allowed_tools: "Bash,Read"
+
+  - name: idor_hunter
+    prompt_file: prompts/executor.md
+    user_input: "Hunt IDOR/BOLA on object-id endpoints. Emit candidates as fenced JSON."
+    allowed_tools: "Bash,Read,Grep"
+
+  - name: ssrf_hunter
+    prompt_file: prompts/executor.md
+    user_input: "Hunt SSRF in outbound-HTTP sinks (webhooks, URL fetch). Emit candidates as fenced JSON."
+    allowed_tools: "Bash,Read,Grep"
+
+  # A live-validation lane serializes behind the mutex so concurrent lanes don't
+  # invalidate each other's auth session against the shared target.
+  - name: validator
+    prompt_file: prompts/verifier.md
+    user_input: "Take the strongest candidate from sibling lanes and reproduce it live."
+    allowed_tools: "Bash,Read"
+    validation: true

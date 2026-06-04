@@ -1,0 +1,20 @@
+{
+  "id": "SH-EXAMPLE-0001",
+  "title": "Object endpoint trusts client-supplied tenant ID — cross-tenant read",
+  "severity": "HIGH",
+  "service": "example-service",
+  "summary": "A read endpoint resolves the object by ID without scoping the query to the caller's tenant, allowing a user in one tenant to read another tenant's object. SYNTHETIC EXAMPLE — not a real finding.",
+  "status": "candidate",
+  "endpoint": "GET /api/v1/objects/{id}",
+  "files": ["src/example/ObjectController.java:42"],
+  "invalidators": [
+    "A tenant-scoping filter is applied in the repository layer (not just the controller)",
+    "An authorization interceptor rejects cross-tenant object IDs before the handler runs"
+  ],
+  "found_at": "2026-01-01",
+  "source": "manual",
+  "evidence": {
+    "live_evidence": "(empty — candidate is code-only until reproduced with two authenticated identities)",
+    "repro_script": "two-jar tenant_diff: request the same object ID as tenant A and tenant B; a leak shows identical bodies"
+  }
+}

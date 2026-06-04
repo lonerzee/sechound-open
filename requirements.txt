@@ -1,0 +1,11 @@
+# SecHound core has near-zero runtime dependencies. The pipeline talks to an
+# LLM through tools/llm.py, which is model-agnostic (see docs/PROVIDERS.md).
+# The default backend shells out to the Claude CLI
+# (https://docs.claude.com/claude-code) and uses only the Python standard library.
+
+# Optional: lets orchestrate.py read .yaml task files (JSON tasks work without it).
+PyYAML>=6.0
+
+# Optional: only needed for the corresponding SECHOUND_LLM backend.
+# anthropic>=0.40    # SECHOUND_LLM=anthropic
+# openai>=1.40       # SECHOUND_LLM=openai

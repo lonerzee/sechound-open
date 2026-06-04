@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SecHound finding",
+  "description": "One record per vulnerability, de-duplicated by root cause.",
+  "type": "object",
+  "required": ["id", "title", "severity", "summary", "status", "found_at"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable ID, e.g. SH-<SERVICE>-NNNN. Never reassigned.",
+      "pattern": "^[A-Z0-9-]+$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Short description ending in the root cause."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
+    },
+    "service": {
+      "type": "string",
+      "description": "Logical component the bug lives in (target-defined)."
+    },
+    "summary": {
+      "type": "string",
+      "description": "1-3 sentence description of the vulnerability."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["candidate", "confirmed", "retracted"],
+      "default": "candidate",
+      "description": "candidate = code-only; confirmed = live repro exists."
+    },
+    "endpoint": {
+      "type": "string",
+      "description": "e.g. POST /api/v1/... when applicable."
+    },
+    "files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Code citations as path:line."
+    },
+    "invalidators": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Controls that, if present, make this a false positive. Each must be checked, not assumed."
+    },
+    "found_at": { "type": "string", "format": "date" },
+    "source": {
+      "type": "string",
+      "description": "manual | orchestrator | agent:<name> | dast"
+    },
+    "evidence": {
+      "type": "object",
+      "description": "Required for status=confirmed.",
+      "properties": {
+        "live_evidence": { "type": "string" },
+        "repro_script": { "type": "string" }
+      }
+    }
+  }
+}

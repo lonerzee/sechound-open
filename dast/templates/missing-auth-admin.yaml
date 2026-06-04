@@ -1,0 +1,17 @@
+# Example DAST template — unauthenticated access to a privileged route.
+# Run WITHOUT auth (no --jar): if a privileged route returns data anonymously,
+# that's a candidate. Adjust paths/words to your target.
+id: missing-auth-admin
+info:
+  name: Unauthenticated access to admin route
+  severity: high
+  service: api
+requests:
+  - method: GET
+    path: /api/admin/users
+    headers: {}
+    body: null
+    matchers:
+      status: [200]
+      words: ["email"]          # body looks like a real user list
+      negative_status: [401, 403]

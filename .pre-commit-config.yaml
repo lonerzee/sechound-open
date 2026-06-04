@@ -1,0 +1,14 @@
+# Local leak guard: runs the sanitization gate before every commit, so target
+# data is caught BEFORE it's committed (not just in CI after a push).
+#   pip install pre-commit && pre-commit install
+#
+# No-framework alternative: bash scripts/install-hooks.sh
+repos:
+  - repo: local
+    hooks:
+      - id: sechound-sanitization
+        name: SecHound sanitization leak gate
+        entry: scripts/check_sanitization.sh
+        language: script
+        pass_filenames: false
+        always_run: true

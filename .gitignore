@@ -1,0 +1,36 @@
+# --- Target-specific data: NEVER commit (see SANITIZATION.md) ---
+config/targets.yaml
+config/invariants.yaml
+config/*.cookies
+.auth/
+*.local.md
+*.local.yaml
+*.local.json
+
+# Real findings / engagement artifacts (templates are kept; live data is not)
+findings/*.json
+!findings/schema.json
+!findings/example-finding.json
+findings_registry/
+engagements/*/
+!engagements/.gitkeep
+evidence/
+exploits/
+reports/
+repos/
+repo_knowledge/
+global_knowledge/
+knowledge/          # compounder writes target-specific learnings here — never commit
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/

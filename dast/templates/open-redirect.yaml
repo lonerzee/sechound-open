@@ -1,0 +1,15 @@
+# Example DAST template — open redirect on a return/next parameter.
+# A 30x to the attacker-controlled host (not the app's own domain) is a candidate.
+id: open-redirect
+info:
+  name: Open redirect via return parameter
+  severity: medium
+  service: api
+requests:
+  - method: GET
+    path: /login?next=https://evil.example
+    headers: {}
+    body: null
+    matchers:
+      status: [301, 302, 303, 307, 308]
+      words: ["evil.example"]    # Location reflected the external host

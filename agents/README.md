@@ -18,18 +18,36 @@ Every sub-agent must:
 5. **Emit to the registry schema.** Output conforms to `findings/schema.json`
    so the merge step can de-duplicate by root cause.
 
-## Suggested roles
+## Shipped agents
 
-These map cleanly onto the pipeline; add your own:
+Each is a markdown system prompt with YAML frontmatter (`name`, `domain`,
+`tools`). `orchestrate.py` dispatches them as lanes via `agent_file:` — it
+strips the frontmatter and honors the declared `tools`. Add your own by dropping
+a `.md` here.
 
 | Agent | Slice |
 |---|---|
-| recon | enumerate attack surface, routes, exposed components |
-| static-hunter | per-vuln-class code search using a `hunt-<class>` skill |
-| api-tester | live API behavior probing within scope |
-| poc-validator | reproduce a candidate; produce evidence or demote |
-| chain-planner | correlate confirmed findings into attack paths |
-| reporter | render confirmed findings + evidence into a report |
+| `recon` | map + rank the in-scope attack surface (seeds hunting) |
+| `web-hunter` | web/API classes (injection, XSS, IDOR, auth, SSRF, upload, GraphQL, logic) |
+| `code-auditor` | static source→sink; confirm/refute semgrep/CodeQL hits |
+| `cloud-auditor` | live cloud + IaC misconfig (Trivy/checkov/prowler) |
+| `deps-auditor` | dependency CVEs triaged by reachability (osv/grype/trivy) |
+| `secrets-hunter` | hardcoded secrets in code/artifacts/history (gitleaks/trufflehog) |
+| `binary-analyst` | native memory-safety (static trace + fuzzing triage) |
+| `triage-agent` | true/false-positive triage of candidate piles |
+| `validator` | live reproduction → confirmed/demoted (holds the mutation mutex) |
+| `chain-builder` | correlate confirmed findings into attack chains |
+| `reporter` | render confirmed findings into a report (redacts first) |
+
+## Running a multi-agent swarm
+
+Fan several out at once with `orchestrate.py` and a task file (read-only lanes
+run in parallel; `validator` serializes behind the mutation mutex). See
+`tasks/swarm.yaml`:
+
+```bash
+python3 tools/orchestrate.py engagements/<id> tasks/swarm.yaml
+```
 
 ## Merge step
 

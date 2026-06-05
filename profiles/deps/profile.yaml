@@ -1,0 +1,13 @@
+name: deps
+domain: [deps]
+description: Dependency / supply-chain — known-vulnerable packages triaged by reachability.
+skills:
+  - hunt-deps
+fp_notes: |
+  A CVE in the dependency graph is not automatically exploitable. Gate on
+  reachability: is the vulnerable code in the resolved/locked runtime artifact
+  (not dev-only), is the vulnerable function actually called, and can an attacker
+  reach it with triggering input? Not reachable -> 'dependency-vulnerable;
+  exploitability TBD', not a confirmed finding. Pairs with imported
+  osv-scanner/grype/trivy SARIF.
+validators: []

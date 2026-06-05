@@ -21,6 +21,27 @@ single seam (`tools/llm.py`), so you can drive it with the Claude Code CLI, a
 local model via Ollama, or any OpenAI-/Anthropic-compatible API by setting one
 environment variable. See [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
 
+**It's a layer, not another scanner.** SecHound's edge is the triage and
+verification that nobody enjoys doing by hand. Pipe your existing scanners in
+(semgrep, CodeQL, nuclei, Trivy, grype, gitleaks — all SARIF), and it
+de-duplicates by root cause, LLM-triages true vs. false positive, verifies the
+real ones, and exports ranked findings + SARIF:
+
+```bash
+semgrep --sarif -o out.sarif .
+python3 tools/import_sarif.py out.sarif --domain web   # dedup on the way in
+python3 tools/triage.py                                # LLM sorts TP/FP, ranks
+python3 tools/report.py --status candidate --format md
+```
+
+**It's domain-neutral.** Not just web/API — the pipeline and registry work for
+cloud/IaC, dependencies, secrets, native/binary, and LLM apps. Domain specifics
+live in optional [profiles](profiles/) and a library of [hunt
+skills](skills/); the [vulnerability taxonomy](docs/VULN_TAXONOMY.md) lists
+what's covered. Specialist [agents](agents/) can be fanned out as a swarm.
+See [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) for how it plugs into your
+toolchain.
+
 > This is the open-source core. It ships with **no target data** — no hosts, no
 > credentials, no findings. You point it at *your own* authorized scope via
 > `config/targets.yaml` (see `config/targets.example.yaml`).
@@ -106,14 +127,19 @@ The orchestration entry points are documented in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); the methodology in
 [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md).
 
-## Status
+## What's in the box
 
-Ships a runnable core: the registry (`tools/findings_db.py`, `tools/ingest.py`),
-the model-agnostic seam (`tools/llm.py`), and the pipeline stages
-(`tools/critic.py`, `tools/compounder.py`, `tools/ultrareview.py`,
-`tools/orchestrate.py`) with their prompts in `prompts/`. It ships with **no
-target data** — see `SANITIZATION.md` for the bar every file clears (no target
-hosts, IDs, credentials, or findings).
+- **Registry** (`tools/findings_db.py`, `ingest`) — root-cause de-duplication, SARIF export.
+- **Scanner interop** — `tools/import_sarif.py` (semgrep/CodeQL/nuclei/Trivy/grype/gitleaks) + `tools/triage.py` (LLM true/false-positive triage).
+- **Model-agnostic seam** (`tools/llm.py`) — Claude CLI / Ollama / Anthropic / OpenAI-compatible / Gemini.
+- **Pipeline** — `run` (plan→execute→verify→critic→compound), `verify_finding`, `critic`, `ultrareview`, `compounder`, `orchestrate`.
+- **Domain packs** — [`profiles/`](profiles/) (web-appsec, secrets, cloud-iac, deps, binary, llm) + a [hunt-skill library](skills/) spanning [many vuln classes](docs/VULN_TAXONOMY.md).
+- **Agents** — [`agents/`](agents/) specialist roles (recon, web/code/cloud/deps/secrets/binary hunters, triage, validator, chain-builder, reporter) dispatchable as a swarm.
+- **Validators** — `tenant_diff` (two-identity proof), `verify_finding` (re-runnable repro contracts).
+- **DAST** — `tools/dast.py` + nuclei-style templates.
+
+Ships with **no target data** — see [`SANITIZATION.md`](SANITIZATION.md) for the
+bar every file clears (no hosts, IDs, credentials, or findings), enforced in CI.
 
 ## Authorized use only
 

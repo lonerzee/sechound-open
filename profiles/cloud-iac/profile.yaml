@@ -1,0 +1,14 @@
+name: cloud-iac
+domain: [cloud, iac]
+description: Cloud account misconfiguration (live) and infrastructure-as-code (pre-deploy).
+skills:
+  - hunt-cloud-misconfig
+  - hunt-iac
+invariants: invariants.yaml
+fp_notes: |
+  For live accounts, confirm the attacker principal ACTUALLY holds the
+  permission (test / policy simulator) — broad policy text alone isn't access.
+  For IaC, resolve the EFFECTIVE config through tfvars/parameters/overlays before
+  filing; a flagged default may be overridden at apply. IaC findings are
+  candidates until the deployed resource exhibits the misconfig.
+validators: []

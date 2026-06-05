@@ -5,6 +5,27 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+### Added
+- **Domain-neutral core.** Finding schema, FP checklist, prompts, and invariants
+  generalized beyond web/multi-tenant; web specifics moved to a profile.
+- **Profiles** (`profiles/`) — domain packs (web-appsec, secrets, cloud-iac,
+  deps, binary, llm) carrying FP patterns, invariants, skills, and validators.
+- **Scanner interop** — `tools/import_sarif.py` (semgrep/CodeQL/nuclei/Trivy/
+  grype/gitleaks → registry, root-cause deduped) + `tools/triage.py` (LLM
+  true/false-positive triage). Positions SecHound as a triage/verification layer.
+- **Hunt-skill library** expanded across domains: injection, xss, auth,
+  path-traversal, deserialization, race, misc, file-upload, graphql,
+  http-smuggling, business-logic, secrets, crypto, memory-safety,
+  cloud-misconfig, iac, deps, prompt-injection, recon (+ existing ssrf/idor).
+- **Agents** (`agents/`) — 11 specialist roles dispatchable as a swarm via
+  `orchestrate.py`; `tasks/swarm.yaml` example.
+- Docs: `VULN_TAXONOMY.md`, `INTEGRATIONS.md`, `EVIDENCE_HYGIENE.md`; README
+  repositioned as a layer-over-scanners; new `import`/`triage`/`dast` CLI verbs.
+
+### Fixed
+- `claude --allowedTools` is variadic and swallowed a trailing positional
+  prompt; the prompt now goes on stdin (every tool-using stage was exiting 1).
+
 ## [0.1.0] — 2026-06-04
 
 Initial open-source release: the generic, model-agnostic core extracted from a

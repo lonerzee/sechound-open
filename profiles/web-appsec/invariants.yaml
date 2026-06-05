@@ -1,0 +1,23 @@
+# Web-appsec invariants — falsify these. Added on top of config/invariants.yaml.
+invariants:
+  - id: WEB-001
+    statement: "A user in tenant A can never read or write an object owned by tenant B."
+    class: tenant-isolation
+    falsify: "As tenant B, request/modify an object owned by A; expect 403/404. Prove with tenant_diff (verdict cross_tenant_leak)."
+    requires: ["principal:tenantA", "principal:tenantB"]
+  - id: WEB-002
+    statement: "Every state-changing action re-checks authorization server-side (not just hidden UI)."
+    class: authorization
+    falsify: "Replay a privileged action as a low-priv principal directly to the API."
+  - id: WEB-003
+    statement: "User input never reaches an interpreter (SQL/shell/template) unescaped."
+    class: injection
+    falsify: "Inject a benign marker; confirm it is interpreted, not echoed."
+  - id: WEB-004
+    statement: "Outbound fetches resolve only to the egress allow-list (no internal/metadata)."
+    class: ssrf
+    falsify: "Supply an internal/metadata URL; observe whether it is fetched."
+  - id: WEB-005
+    statement: "Prices, totals, and quantities are authoritative server-side; client values are ignored."
+    class: business-logic
+    falsify: "Tamper price/quantity/total in the request; check if the server honors it."

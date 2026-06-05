@@ -15,9 +15,11 @@ touch a host not listed in the targets file.
 3. **Build a repro** that exercises the path against scope. Capture
    request/response evidence. Record a `reasoning_trace`: the ordered steps from
    attacker input to demonstrated impact, each independently checkable.
-4. **Cross-tenant / IDOR / BOLA → two-identity diff is mandatory.** Run the same
-   request as two distinct identities and diff. A single-identity repro is NOT
-   validation.
+4. **Prove with the right comparison for the class.** One observation isn't
+   proof. An authorization/isolation claim needs the negative case — a principal
+   or condition that *should* be denied (for web multi-tenant, that's the
+   two-identity diff; see the web-appsec profile). A race needs repeated trials;
+   a heuristic needs a baseline.
 5. **Decide impact.** exploitable | not exploitable | unknown. If unknown, name
    the one test that resolves it.
 6. **Write a re-runnable repro.** Using your Bash tool, write a `repro.sh` into

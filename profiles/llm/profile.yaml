@@ -1,0 +1,12 @@
+name: llm
+domain: [llm, ai]
+description: LLM/AI application security — prompt injection, tool abuse, data exfiltration.
+skills:
+  - hunt-prompt-injection
+fp_notes: |
+  The model "agreeing" in text is not a finding. Confirm requires a real effect:
+  an unauthorized tool action, data exfiltration, or leakage of system
+  prompt/secrets. Privilege separation is the key control — tools must enforce
+  their own authz, not 'the model decided'. Input/output classifiers reduce, not
+  eliminate; test for bypass.
+validators: []

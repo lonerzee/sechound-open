@@ -105,6 +105,34 @@ setting one env var. Stages that must read the codebase (critic, static review
 lane) request tool access via `tools=`; completion-only backends degrade
 gracefully with a warning. Full matrix in [`PROVIDERS.md`](PROVIDERS.md).
 
+## Ingest & triage layer (`tools/import_sarif.py`, `tools/triage.py`)
+
+SecHound doesn't only *find* — it makes *other tools'* output trustworthy.
+`import_sarif.py` normalizes SARIF from any scanner (semgrep, CodeQL, nuclei,
+Trivy, grype, gitleaks, checkov) into registry candidates, de-duplicating by
+root cause on the way in. `triage.py` then runs the LLM + FP checklist over the
+candidates and labels each `likely_true_positive | likely_false_positive |
+needs_verification` with a reason — turning a 4,000-hit scan into a ranked
+shortlist. The survivors flow into the same verify → critic path. See
+[`INTEGRATIONS.md`](INTEGRATIONS.md).
+
+## Profiles (`profiles/`)
+
+The core is domain-neutral; a **profile** is a domain pack (web-appsec, secrets,
+cloud-iac, deps, binary, llm) that layers on domain-specific FP patterns,
+invariants, the relevant hunt skills, and validators. The planner/hunters/critic
+load the active profile on top of the generic core. A binary or cloud researcher
+uses (or writes) their profile without touching the engine. See
+[`profiles/README.md`](../profiles/README.md).
+
+## Agents (`agents/`)
+
+Specialist sub-agents (recon, per-domain hunters, code-auditor, triage,
+validator, chain-builder, reporter) are markdown system prompts with frontmatter.
+`orchestrate.py` fans them out as parallel lanes (`agent_file:`); read-only lanes
+run concurrently, the `validator` serializes behind the live-mutation mutex.
+Findings they emit in fenced JSON are auto-ingested + deduped.
+
 ## State & storage
 
 - **Findings registry** — JSON records (`findings/schema.json`),

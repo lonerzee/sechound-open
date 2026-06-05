@@ -2,6 +2,22 @@
 
 How to run an engagement with SecHound. Target-agnostic; fill in your own scope.
 
+## Two entry points
+
+1. **Triage existing scan output** (fastest value). You already run scanners —
+   import their SARIF, let SecHound dedup + LLM-triage + verify:
+   ```bash
+   python3 tools/import_sarif.py semgrep.sarif trivy.sarif nuclei.sarif
+   python3 tools/triage.py              # TP / FP / needs-verification, ranked
+   python3 tools/verify_finding.py <engagement>   # confirm the survivors
+   ```
+2. **Hunt from scratch** — the full loop (below), optionally fanning out the
+   [agents](../agents/) as a swarm. Both land in the same registry and share the
+   verify → critic → report tail.
+
+Set the active [profile](../profiles/) for your domain so the right FP patterns
+and invariants load.
+
 ## 0. Scope & authorization
 
 Write down what you are authorized to touch and for how long, in

@@ -1,0 +1,36 @@
+# Multi-agent swarm — fan specialist agents out in parallel.
+#   python3 tools/orchestrate.py engagements/<id> tasks/swarm.yaml
+#
+# Read-only lanes run concurrently; the validator lane (validation: true)
+# serializes behind the live-mutation mutex so lanes don't trample each other's
+# auth/state. Findings emitted in ```json fences are auto-ingested + deduped.
+
+run_id: swarm
+timeout: 1200
+
+lanes:
+  - name: recon
+    agent_file: agents/recon.md
+    user_input: "Map the in-scope attack surface and rank targets by attacker value."
+
+  - name: web
+    agent_file: agents/web-hunter.md
+    user_input: "Hunt the web/API classes against the ranked surface. Emit candidates as fenced JSON."
+
+  - name: code
+    agent_file: agents/code-auditor.md
+    user_input: "Audit the source for injection/deser/path-traversal/crypto/authz. Confirm or refute any imported semgrep/CodeQL hits."
+
+  - name: secrets
+    agent_file: agents/secrets-hunter.md
+    user_input: "Scan source, artifacts, and git history for live, reachable secrets."
+
+  - name: deps
+    agent_file: agents/deps-auditor.md
+    user_input: "Triage dependency CVEs by reachability in this app's actual usage."
+
+  # Live-mutation lane: serializes behind the mutex.
+  - name: validate
+    agent_file: agents/validator.md
+    user_input: "Take the strongest candidate from sibling lanes and reproduce it live with a repro contract."
+    validation: true

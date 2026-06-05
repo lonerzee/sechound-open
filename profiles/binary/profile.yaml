@@ -1,0 +1,11 @@
+name: binary
+domain: [binary, native]
+description: Native memory-safety in C/C++/unsafe code and binaries.
+skills:
+  - hunt-memory-safety
+fp_notes: |
+  A static unsafe-API hit is not a finding without a reachable, triggerable path
+  from attacker-controlled input. Mitigations (ASLR/DEP/canaries/CFI) raise the
+  bar but aren't fixes. Confirm needs a reproducible crash/corruption with a
+  triaged primitive (OOB read/write, pointer/PC control) — fuzz under a sanitizer.
+validators: []

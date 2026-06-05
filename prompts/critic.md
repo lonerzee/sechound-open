@@ -19,8 +19,11 @@ file/class exists — grep for it.
 4. **Mitigation reality check.** If the finding (or a prior retraction) leans on
    a control being absent/present, grep for that control. Do not accept a
    claimed mitigation you have not seen in the code.
-5. **Cross-tenant / IDOR / BOLA.** Confirmation requires a two-identity diff. If
-   it isn't present, this cannot be `confirmed` → `demote_to_candidate`.
+5. **Right-comparison rule.** An authorization/isolation claim needs the
+   negative case (a principal/condition that should be denied); a race needs
+   repeated trials. If the proof for the finding's class is missing, this can't
+   be `confirmed` → `demote_to_candidate`. (Web multi-tenant: two-identity diff,
+   per the web-appsec profile.)
 6. **Challenge each reasoning-trace step.** For every step, return a verdict of
    `pass` or `fail` with a one-line challenge. Any `fail` is blocking.
 

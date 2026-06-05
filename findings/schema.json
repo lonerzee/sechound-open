@@ -1,13 +1,13 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SecHound finding",
-  "description": "One record per vulnerability, de-duplicated by root cause.",
+  "description": "One record per finding, de-duplicated by root cause. Domain-neutral: works for web, cloud, binary, secrets, dependency, mobile, or any security domain. Domain-specific fields (endpoint, etc.) are optional.",
   "type": "object",
   "required": ["id", "title", "severity", "summary", "status", "found_at"],
   "properties": {
     "id": {
       "type": "string",
-      "description": "Stable ID, e.g. SH-<SERVICE>-NNNN. Never reassigned.",
+      "description": "Stable ID, e.g. SH-<COMPONENT>-NNNN. Never reassigned.",
       "pattern": "^[A-Z0-9-]+$"
     },
     "title": {
@@ -18,28 +18,48 @@
       "type": "string",
       "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
     },
-    "service": {
-      "type": "string",
-      "description": "Logical component the bug lives in (target-defined)."
-    },
     "summary": {
       "type": "string",
-      "description": "1-3 sentence description of the vulnerability."
+      "description": "1-3 sentence description of the finding."
     },
     "status": {
       "type": "string",
-      "enum": ["candidate", "confirmed", "retracted"],
+      "enum": ["candidate", "confirmed", "retracted", "unverifiable"],
       "default": "candidate",
-      "description": "candidate = code-only; confirmed = live repro exists."
+      "description": "candidate = unproven; confirmed = reproduced with evidence."
+    },
+    "domain": {
+      "type": "string",
+      "description": "Security domain, free-form. e.g. web, api, cloud, iac, binary, secrets, deps, mobile, llm. Drives which profile's controls apply."
+    },
+    "category": {
+      "type": "string",
+      "description": "Vulnerability class or rule id. Free-form (e.g. 'sql-injection', 'hardcoded-secret', 'use-after-free', 'public-s3-bucket') or a scanner ruleId."
+    },
+    "cwe": {
+      "type": "string",
+      "description": "Optional CWE id, e.g. 'CWE-89'. Universal taxonomy."
+    },
+    "component": {
+      "type": "string",
+      "description": "Logical grouping the finding belongs to (service, module, package, image, repo). Domain-defined. (Alias: 'service' is accepted for back-compat.)"
+    },
+    "service": {
+      "type": "string",
+      "description": "Deprecated alias for 'component'. Still read by tooling."
+    },
+    "location": {
+      "type": "string",
+      "description": "Where the finding is, in whatever form fits the domain: 'path/File.ext:42', an HTTP route, a binary offset, a cloud resource ARN, a package@version."
     },
     "endpoint": {
       "type": "string",
-      "description": "e.g. POST /api/v1/... when applicable."
+      "description": "Web/API-specific locator, e.g. 'POST /api/v1/...'. Optional."
     },
     "files": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Code citations as path:line."
+      "description": "Code/artifact citations as path:line (when applicable)."
     },
     "invalidators": {
       "type": "array",
@@ -49,14 +69,34 @@
     "found_at": { "type": "string", "format": "date" },
     "source": {
       "type": "string",
-      "description": "manual | orchestrator | agent:<name> | dast"
+      "description": "How it was found: manual | orchestrator | agent:<name> | sarif:<tool> | dast | <scanner>."
+    },
+    "triage": {
+      "type": "object",
+      "description": "Set by the LLM triage pass over imported/candidate findings.",
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": ["likely_true_positive", "likely_false_positive", "needs_verification"]
+        },
+        "reason": { "type": "string" },
+        "triaged_at": { "type": "string" }
+      }
     },
     "evidence": {
       "type": "object",
       "description": "Required for status=confirmed.",
       "properties": {
         "live_evidence": { "type": "string" },
-        "repro_script": { "type": "string" }
+        "repro": {
+          "type": "object",
+          "description": "Re-runnable repro contract checked by verify_finding.",
+          "properties": {
+            "script": { "type": "string" },
+            "expected_signals": { "type": "array", "items": { "type": "string" } },
+            "forbidden_signals": { "type": "array", "items": { "type": "string" } }
+          }
+        }
       }
     }
   }

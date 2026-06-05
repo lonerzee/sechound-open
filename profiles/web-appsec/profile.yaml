@@ -1,0 +1,21 @@
+name: web-appsec
+domain: [web, api]
+description: Multi-tenant web/API application security — injection, authz/isolation, SSRF, and the rest of the web class set.
+skills:
+  - hunt-injection
+  - hunt-xss
+  - hunt-idor
+  - hunt-auth
+  - hunt-ssrf
+  - hunt-path-traversal
+  - hunt-deserialization
+  - hunt-file-upload
+  - hunt-graphql
+  - hunt-http-smuggling
+  - hunt-business-logic
+  - hunt-race
+  - hunt-misc
+fp_checklist: FP_CHECKLIST.md
+invariants: invariants.yaml
+validators:
+  - tenant_diff      # tools/tenant_diff.py — the two-identity proof for isolation/IDOR/BOLA

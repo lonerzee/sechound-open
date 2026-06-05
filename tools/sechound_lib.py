@@ -33,6 +33,48 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def load_profile(name: str | None = None) -> dict | None:
+    """Load a domain profile's FP addendum + invariants for prompt injection.
+
+    `name` explicit wins; else read `profile:` from config/targets.yaml. Returns
+    {name, fp, invariants} or None. Works without PyYAML (reads the markdown/yaml
+    files as raw text; only the config lookup needs yaml).
+    """
+    if name is None:
+        cfg = repo_root() / "config" / "targets.yaml"
+        if cfg.exists():
+            try:
+                import yaml
+                name = (yaml.safe_load(cfg.read_text()) or {}).get("profile")
+            except Exception:
+                name = None
+    if not name:
+        return None
+    pdir = repo_root() / "profiles" / name
+    if not pdir.is_dir():
+        return None
+    fp = pdir / "FP_CHECKLIST.md"
+    inv = pdir / "invariants.yaml"
+    return {
+        "name": name,
+        "fp": fp.read_text(encoding="utf-8") if fp.exists() else "",
+        "invariants": inv.read_text(encoding="utf-8") if inv.exists() else "",
+    }
+
+
+def profile_context(name: str | None = None) -> str:
+    """A prompt-injectable block for the active profile (empty string if none)."""
+    p = load_profile(name)
+    if not p:
+        return ""
+    out = [f"\n## Active profile: {p['name']} (domain-specific controls — apply on top of the core)"]
+    if p["fp"]:
+        out.append(f"### Profile FP patterns\n{p['fp']}")
+    if p["invariants"]:
+        out.append(f"### Profile invariants to falsify\n```yaml\n{p['invariants']}\n```")
+    return "\n\n".join(out)
+
+
 def resolve_engagement_arg(arg: str | None) -> Path:
     """Resolve an engagement directory.
 

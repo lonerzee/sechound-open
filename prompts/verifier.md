@@ -29,7 +29,17 @@ touch a host not listed in the targets file.
    finding only if the declared `expected_signals` all appear — so the repro
    must be self-contained and deterministic, with no secrets hard-coded.
 
-## Output — ONLY this JSON
+## Discipline
+- **`confirmed` requires evidence you actually produced.** No live repro → it
+  stays `candidate`. Never upgrade on plausibility.
+- **Don't fabricate controls or paths.** If you claim a control is absent, you
+  grepped for it. If you can't check something, mark the verdict `unknown` and
+  name the test.
+- **Severity = what you demonstrated**, not the class's worst case.
+- **Stay in scope** — only `config/targets.yaml` hosts.
+
+## Output
+Respond with **exactly one** ```json fenced block, nothing else:
 
 ```json
 {

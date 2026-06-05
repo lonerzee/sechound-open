@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sechound_lib import sechound_model, utcnow, repo_root
+from sechound_lib import sechound_model, utcnow, repo_root, load_profile
 import findings_db
 import llm
 
@@ -66,9 +66,13 @@ def _extract_json(text: str) -> dict | None:
     return None
 
 
-def _fp_checklist() -> str:
+def _fp_checklist(profile: str | None = None) -> str:
     p = repo_root() / "docs" / "FP_CHECKLIST.md"
-    return p.read_text(encoding="utf-8") if p.exists() else "(FP checklist not found)"
+    core = p.read_text(encoding="utf-8") if p.exists() else "(FP checklist not found)"
+    prof = load_profile(profile)
+    if prof and prof.get("fp"):
+        core += f"\n\n## Profile FP patterns ({prof['name']})\n{prof['fp']}"
+    return core
 
 
 def _triage_one(finding: dict, checklist: str, model: str, timeout: int, deep: bool) -> dict:
@@ -88,6 +92,7 @@ def main() -> int:
     ap.add_argument("--status", default="candidate", help="only this status (default: candidate)")
     ap.add_argument("--limit", type=int, default=0, help="max findings to triage (0 = all)")
     ap.add_argument("--deep", action="store_true", help="let the model read cited code (agentic backends)")
+    ap.add_argument("--profile", default=None, help="domain profile (default: config/targets.yaml 'profile:')")
     ap.add_argument("--concurrency", type=int, default=4)
     ap.add_argument("--model", default=sechound_model("default"))
     ap.add_argument("--timeout", type=int, default=180)
@@ -110,7 +115,7 @@ def main() -> int:
         return 0
 
     print(f"[triage] {len(todo)} candidate(s) | provider={llm.provider()} model={args.model} deep={args.deep}")
-    checklist = _fp_checklist()
+    checklist = _fp_checklist(args.profile)
     counts = {"likely_true_positive": 0, "likely_false_positive": 0, "needs_verification": 0, "error": 0}
 
     def work(f):

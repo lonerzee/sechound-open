@@ -42,6 +42,24 @@ def test_update_in_place_by_id(monkeypatch, tmp_path):
     assert db.load_db()[0]["severity"] == "CRITICAL"
 
 
+def test_cross_scanner_dedup_by_location(monkeypatch, tmp_path):
+    # Two scanners flag the same file:line with different wording -> one finding.
+    db = _fresh_db(monkeypatch, tmp_path)
+    a, _ = db.upsert({"title": "semgrep: tainted query", "domain": "web",
+                      "location": "src/db.py:12", "severity": "HIGH", "source": "sarif:semgrep"})
+    b, action = db.upsert({"title": "codeql: SQL built from user input", "domain": "web",
+                           "location": "src/db.py:12", "severity": "HIGH", "source": "sarif:codeql"})
+    assert action == "duplicate" and a == b
+    assert len(db.load_db()) == 1
+
+
+def test_component_alias_and_id_prefix(monkeypatch, tmp_path):
+    db = _fresh_db(monkeypatch, tmp_path)
+    fid, _ = db.upsert({"title": "x", "component": "auth-svc", "severity": "LOW"})
+    assert fid == "SH-AUTHSVC-0001"               # component drives the prefix
+    assert db.component_of({"service": "legacy"}) == "legacy"   # legacy alias still read
+
+
 def test_finding_does_not_dedup_against_itself(monkeypatch, tmp_path):
     db = _fresh_db(monkeypatch, tmp_path)
     fid, _ = db.upsert({"title": "IDOR x", "service": "api",

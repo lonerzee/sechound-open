@@ -23,14 +23,21 @@ _SARIF_LEVEL = {"CRITICAL": "error", "HIGH": "error", "MEDIUM": "warning",
                 "LOW": "note", "INFO": "note"}
 
 
-def _filter(db: list[dict], status: str | None, severity: str | None, service: str | None) -> list[dict]:
+def _component(f: dict) -> str:
+    return findings_db.component_of(f) or (f.get("domain") or "")
+
+
+def _filter(db: list[dict], status: str | None, severity: str | None,
+            component: str | None, domain: str | None) -> list[dict]:
     out = db
     if status:
         out = [f for f in out if (f.get("status") or "").lower() == status.lower()]
     if severity:
         out = [f for f in out if (f.get("severity") or "").upper() == severity.upper()]
-    if service:
-        out = [f for f in out if (f.get("service") or "").lower() == service.lower()]
+    if component:
+        out = [f for f in out if findings_db.component_of(f) == component.lower()]
+    if domain:
+        out = [f for f in out if (f.get("domain") or "").lower() == domain.lower()]
     return out
 
 
@@ -38,9 +45,9 @@ def _table(findings: list[dict]) -> str:
     if not findings:
         return "(no findings match)"
     rows = [f"{f.get('id',''):<16} {f.get('severity',''):<9} {f.get('status',''):<14} "
-            f"{(f.get('service') or '')[:14]:<14} {(f.get('title') or '')[:60]}"
+            f"{_component(f)[:14]:<14} {(f.get('title') or '')[:56]}"
             for f in findings]
-    header = f"{'ID':<16} {'SEVERITY':<9} {'STATUS':<14} {'SERVICE':<14} TITLE"
+    header = f"{'ID':<16} {'SEVERITY':<9} {'STATUS':<14} {'COMPONENT':<14} TITLE"
     return header + "\n" + "-" * len(header) + "\n" + "\n".join(rows)
 
 
@@ -56,8 +63,10 @@ def _markdown(findings: list[dict]) -> str:
         lines += ["", f"## {f.get('id','')} — {f.get('title','')}", "",
                   f"- **Severity:** {f.get('severity','')}",
                   f"- **Status:** {f.get('status','')}",
-                  f"- **Service:** {f.get('service','')}",
-                  f"- **Endpoint:** {f.get('endpoint','—')}",
+                  f"- **Domain:** {f.get('domain','—')}",
+                  f"- **Category:** {f.get('category','—')}{(' (' + f['cwe'] + ')') if f.get('cwe') else ''}",
+                  f"- **Component:** {_component(f) or '—'}",
+                  f"- **Location:** {findings_db.location_of(f) or '—'}",
                   f"- **Files:** {', '.join(f.get('files', [])) or '—'}", "",
                   f.get("summary", "")]
         ev = (f.get("evidence") or {}).get("live_evidence")
@@ -70,11 +79,12 @@ def _markdown(findings: list[dict]) -> str:
 def _sarif(findings: list[dict]) -> str:
     rules, results = {}, []
     for f in findings:
-        rule_id = f.get("service") or "finding"
+        rule_id = f.get("category") or findings_db.component_of(f) or "finding"
         rules.setdefault(rule_id, {"id": rule_id, "name": rule_id,
                                    "shortDescription": {"text": f"SecHound: {rule_id}"}})
         loc = []
-        for cite in f.get("files", []):
+        cites = f.get("files") or ([f["location"]] if f.get("location") else [])
+        for cite in cites:
             path, _, line = cite.partition(":")
             region = {"startLine": int(line)} if line.isdigit() else {}
             loc.append({"physicalLocation": {
@@ -102,11 +112,14 @@ def main() -> int:
     ap.add_argument("engagement_dir", nargs="?", default=None, help="(unused; registry is global)")
     ap.add_argument("--status")
     ap.add_argument("--severity")
-    ap.add_argument("--service")
+    ap.add_argument("--component", help="filter by component (or legacy 'service')")
+    ap.add_argument("--service", help="alias for --component")
+    ap.add_argument("--domain", help="filter by domain (web/cloud/binary/...)")
     ap.add_argument("--format", choices=["table", "md", "sarif"], default="table")
     args = ap.parse_args()
 
-    findings = _filter(findings_db.load_db(), args.status, args.severity, args.service)
+    findings = _filter(findings_db.load_db(), args.status, args.severity,
+                       args.component or args.service, args.domain)
     findings.sort(key=lambda f: ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"].index(
         (f.get("severity") or "INFO").upper()) if (f.get("severity") or "INFO").upper()
         in ("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO") else 99)

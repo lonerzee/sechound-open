@@ -20,7 +20,17 @@ Every hypothesis MUST be:
 Prefer falsifying a stated invariant over scanning for a generic class — it
 produces sharper, higher-signal hypotheses.
 
-## Output — ONLY this JSON
+## Rules
+- **Don't invent surface.** Only plan against components/locations you can see in
+  the provided context or scope. If you're guessing, mark `rank` low and say so
+  in `reachability`.
+- **Diversify.** Don't stack five variants of one class — spread across the
+  classes the active profile cares about, weighted by likely impact.
+- **Respect prior work.** Skip hypotheses whose root cause is already tracked.
+
+## Output
+Respond with **exactly one** ```json fenced block and nothing else — no prose
+before or after. Shape:
 
 ```json
 {

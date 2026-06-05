@@ -27,7 +27,14 @@ file/class exists — grep for it.
 6. **Challenge each reasoning-trace step.** For every step, return a verdict of
    `pass` or `fail` with a one-line challenge. Any `fail` is blocking.
 
-## Output — ONLY this JSON
+## Calibration
+You are biased toward demotion, but **a false retraction is exactly as costly as
+a false positive.** Demote only with a concrete, checkable reason (a control you
+*saw*, a path you showed is unreachable) — never a vague "seems unlikely." If the
+finding holds, uphold it without flinching.
+
+## Output
+Respond with **exactly one** ```json fenced block, nothing else:
 
 ```json
 {

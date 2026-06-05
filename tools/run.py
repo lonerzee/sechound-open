@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sechound_lib import resolve_engagement_arg, sechound_model, utcnow, repo_root
+from sechound_lib import resolve_engagement_arg, sechound_model, utcnow, repo_root, profile_context
 import findings_db
 import llm
 
@@ -79,14 +79,15 @@ def _run_tool(script: str, *tool_args: str) -> int:
     return subprocess.run(cmd).returncode
 
 
-def iterate(eng: Path, goal: str, n: int, model: str, timeout: int) -> None:
+def iterate(eng: Path, goal: str, n: int, model: str, timeout: int, profile: str | None = None) -> None:
     scope = _load_scope()
     knowledge = _knowledge_context(eng)
+    prof_ctx = profile_context(profile)
     iter_no = len(list((eng / "attempts").glob("iteration_*.json"))) + 1 if (eng / "attempts").exists() else 1
 
     common = (f"Engagement: {eng}\nGoal: {goal}\n"
               f"In-scope (config/targets.yaml):\n```json\n{json.dumps(scope.get('targets', []), indent=2)}\n```\n\n"
-              f"{knowledge}")
+              f"{knowledge}{prof_ctx}")
 
     # 1. PLAN
     print(f"\n=== iteration {iter_no}: plan ===")
@@ -163,7 +164,7 @@ def iterate(eng: Path, goal: str, n: int, model: str, timeout: int) -> None:
     _run_tool("compounder.py", str(eng))
 
     if n > 1:
-        iterate(eng, goal, n - 1, model, timeout)
+        iterate(eng, goal, n - 1, model, timeout, profile)
 
 
 def main() -> int:
@@ -171,6 +172,7 @@ def main() -> int:
     ap.add_argument("engagement_dir", nargs="?", default=None)
     ap.add_argument("--goal", required=True, help="what to hunt this run")
     ap.add_argument("--iterations", type=int, default=1)
+    ap.add_argument("--profile", default=None, help="domain profile (default: config/targets.yaml 'profile:')")
     ap.add_argument("--model", default=sechound_model("default"))
     ap.add_argument("--timeout", type=int, default=600)
     args = ap.parse_args()
@@ -182,7 +184,7 @@ def main() -> int:
 
     print(f"[run] engagement={eng.name} goal={args.goal!r} iterations={args.iterations} "
           f"provider={llm.provider()} model={args.model}")
-    iterate(eng, args.goal, args.iterations, args.model, args.timeout)
+    iterate(eng, args.goal, args.iterations, args.model, args.timeout, args.profile)
     print("\n[run] loop complete. Review with: python3 tools/ultrareview.py "
           f"{eng}  /  python3 tools/report.py {eng}")
     return 0

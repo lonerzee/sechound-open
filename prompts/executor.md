@@ -18,7 +18,19 @@ Apply the FP checklist (`docs/FP_CHECKLIST.md` + the active profile's) to
 *sharpen* each candidate, not to suppress it. Filing a code-level candidate is
 cheap; missing a real bug is expensive. When in doubt, file it.
 
-## Output — ONLY this JSON (one object per candidate, in ```json fences)
+## Rules
+- **Cite only what you actually observed.** Every `files`/`location` must point
+  to something you read or saw — never invent a path, line, or control. If a
+  step is an assumption, say so in `summary` ("assumes …").
+- **Severity = demonstrated, not category default.** A code-only candidate is
+  rarely CRITICAL; rate by the impact you can actually show. The verifier raises
+  it on confirmation.
+- **One candidate per root cause.** Don't emit the same issue at three call
+  sites as three findings.
+
+## Output
+Emit each candidate as its own ```json fenced block (one object per block),
+nothing else between them. Shape:
 
 ```json
 {

@@ -58,33 +58,48 @@ def _norm(text: str) -> set[str]:
     return set(re.findall(r"[a-z0-9]+", (text or "").lower()))
 
 
+def component_of(f: dict) -> str:
+    """The logical grouping — 'component' (new) or 'service' (legacy alias)."""
+    return (f.get("component") or f.get("service") or "").lower()
+
+
+def location_of(f: dict) -> str:
+    """The locator — 'location' (new), else 'endpoint', else first file cite."""
+    return (f.get("location") or f.get("endpoint")
+            or (f.get("files") or [""])[0] or "").lower()
+
+
 def check_duplicate(db: list[dict], finding: dict) -> str | None:
     """Return the id of an existing finding with the same root cause, else None.
 
-    Root cause ≈ same service + same endpoint, or a high title-word overlap.
-    Symptom-level matching (exact title) is intentionally NOT used — the same
-    bug found three ways should collapse to one record.
+    Root cause ≈ same component+location (covers cross-scanner hits on the same
+    file:line/route/resource), or a high title-word overlap within a component.
+    Symptom-level (exact title) matching is intentionally NOT used.
     """
-    svc = (finding.get("service") or "").lower()
-    ep = (finding.get("endpoint") or "").lower()
+    comp = component_of(finding)
+    loc = location_of(finding)
     title_words = _norm(finding.get("title", ""))
     fid = finding.get("id")
     for existing in db:
         if fid and existing.get("id") == fid:
             continue  # a finding never de-duplicates against its own record
-        if svc and ep and (existing.get("service") or "").lower() == svc \
-                and (existing.get("endpoint") or "").lower() == ep:
+        ecomp = component_of(existing)
+        # Same location + same (or both-empty) component → same root cause.
+        # Empty-component match lets two scanners on the same file:line collapse.
+        if loc and location_of(existing) == loc and ecomp == comp:
             return existing.get("id")
         ew = _norm(existing.get("title", ""))
         if title_words and ew:
             overlap = len(title_words & ew) / len(title_words)
-            if overlap >= 0.75 and (existing.get("service") or "").lower() == svc:
+            if overlap >= 0.75 and ecomp == comp:
                 return existing.get("id")
     return None
 
 
-def _next_id(db: list[dict], service: str) -> str:
-    svc = re.sub(r"[^A-Z0-9]", "", (service or "GEN").upper()) or "GEN"
+def _next_id(db: list[dict], finding: dict) -> str:
+    # Prefix from component, else domain, else GEN (so imported web findings get SH-WEB-*).
+    raw = finding.get("component") or finding.get("service") or finding.get("domain") or "GEN"
+    svc = re.sub(r"[^A-Z0-9]", "", raw.upper()) or "GEN"
     prefix = f"SH-{svc}-"
     nums = [
         int(m.group(1))
@@ -116,7 +131,7 @@ def upsert(finding: dict) -> tuple[str, str]:
             return dup, "duplicate"
 
         if not fid:
-            fid = _next_id(db, finding.get("service", ""))
+            fid = _next_id(db, finding)
             finding["id"] = fid
         finding.setdefault("status", "candidate")
         finding.setdefault("found_at", utcnow()[:10])

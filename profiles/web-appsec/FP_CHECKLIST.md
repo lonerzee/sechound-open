@@ -27,6 +27,7 @@ specifics that caused real false positives and false retractions.
    auth you don't hold. Confirm reachability from the attacker position before
    confirming.
 
-6. **Webhook/callback source is trusted & verified.** A "SSRF/injection via
+6. **Webhook/callback source is trusted & verified.** An "SSRF/injection via
    webhook" where the source is a signature-verified third party (and the
-   signature is actually checked) is lower/again — trace who controls the input.
+   signature is *actually* checked) is lower severity — trace who really
+   controls the input before rating it.

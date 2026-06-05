@@ -33,6 +33,70 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+import re as _re
+
+_FRONTMATTER = _re.compile(r"^---\s*\n(.*?)\n---\s*\n", _re.DOTALL)
+
+
+def _split_frontmatter(text: str) -> tuple[dict, str]:
+    """Return (frontmatter_dict, body). Frontmatter parsed shallowly (no yaml dep
+    needed for the simple key: value / list lines our skills use)."""
+    m = _FRONTMATTER.match(text)
+    if not m:
+        return {}, text
+    fm: dict = {}
+    for line in m.group(1).splitlines():
+        if ":" in line and not line.lstrip().startswith("-"):
+            k, _, v = line.partition(":")
+            fm[k.strip()] = v.strip()
+    return fm, text[m.end():]
+
+
+def skill_index() -> list[dict]:
+    """Catalog of available hunt skills: [{name, description, domain}]."""
+    sdir = repo_root() / "skills"
+    out = []
+    if not sdir.is_dir():
+        return out
+    for p in sorted(sdir.glob("*/SKILL.md")):
+        fm, _ = _split_frontmatter(p.read_text(encoding="utf-8"))
+        out.append({"name": fm.get("name", p.parent.name),
+                    "description": fm.get("description", ""),
+                    "domain": fm.get("domain", "")})
+    return out
+
+
+def skill_index_text() -> str:
+    """Compact, prompt-injectable catalog so the model knows what's available."""
+    rows = [f"- {s['name']} [{s['domain']}]: {s['description']}" for s in skill_index()]
+    return "## Available hunt skills (load by name)\n" + "\n".join(rows) if rows else ""
+
+
+def load_skill(name: str) -> str:
+    """Full body of one skill (frontmatter stripped), or '' if not found."""
+    p = repo_root() / "skills" / name / "SKILL.md"
+    if not p.exists():
+        return ""
+    _, body = _split_frontmatter(p.read_text(encoding="utf-8"))
+    return body.strip()
+
+
+def skill_context(names: list[str], cap: int = 6) -> str:
+    """Concatenate the bodies of the named skills for injection (deduped, capped)."""
+    seen, blocks = set(), []
+    for n in names:
+        n = (n or "").strip()
+        if not n or n in seen:
+            continue
+        seen.add(n)
+        body = load_skill(n)
+        if body:
+            blocks.append(f"### Skill: {n}\n{body}")
+        if len(blocks) >= cap:
+            break
+    return ("\n\n## Loaded hunt skills\n\n" + "\n\n".join(blocks)) if blocks else ""
+
+
 def load_profile(name: str | None = None) -> dict | None:
     """Load a domain profile's FP addendum + invariants for prompt injection.
 
@@ -55,10 +119,30 @@ def load_profile(name: str | None = None) -> dict | None:
         return None
     fp = pdir / "FP_CHECKLIST.md"
     inv = pdir / "invariants.yaml"
+    manifest = pdir / "profile.yaml"
+    skills: list[str] = []
+    if manifest.exists():
+        try:
+            import yaml
+            skills = (yaml.safe_load(manifest.read_text()) or {}).get("skills") or []
+        except Exception:
+            # yaml-less fallback: scrape "  - skill-name" lines under a skills: key
+            in_skills = False
+            for ln in manifest.read_text().splitlines():
+                if ln.startswith("skills:"):
+                    in_skills = True
+                    continue
+                if in_skills:
+                    m = _re.match(r"\s*-\s*(\S+)", ln)
+                    if m:
+                        skills.append(m.group(1))
+                    elif ln and not ln[0].isspace():
+                        break
     return {
         "name": name,
         "fp": fp.read_text(encoding="utf-8") if fp.exists() else "",
         "invariants": inv.read_text(encoding="utf-8") if inv.exists() else "",
+        "skills": skills,
     }
 
 

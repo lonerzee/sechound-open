@@ -39,6 +39,33 @@ def test_forbidden_signal_demotes(monkeypatch, tmp_path):
     assert finding["status"] == "unverifiable"
 
 
+def test_imported_finding_repro_refused_without_allow_exec(monkeypatch, tmp_path):
+    # An imported (untrusted-source) finding's bash repro must NOT auto-run.
+    import importlib
+    import json as _json
+    monkeypatch.setenv("SECHOUND_DB", str(tmp_path / "db.json"))
+    eng = tmp_path / "eng"
+    (eng / "findings").mkdir(parents=True)
+    finding = {"id": "SH-API-0001", "title": "t", "domain": "web", "status": "candidate",
+               "source": "sarif:semgrep",
+               "evidence": {"repro": {"script": "echo PWNED", "expected_signals": ["PWNED"]}}}
+    (eng / "findings" / "SH-API-0001.json").write_text(_json.dumps(finding))
+    import verify_finding
+    importlib.reload(verify_finding)
+    monkeypatch.setattr("sys.argv", ["verify", str(eng), "all", "--skip-precheck"])
+    verify_finding.main()
+    after = _json.loads((eng / "findings" / "SH-API-0001.json").read_text())
+    assert after["status"] == "candidate"          # not run, not confirmed
+
+
+def test_exec_allowed_logic():
+    import verify_finding, importlib
+    importlib.reload(verify_finding)
+    assert verify_finding._exec_allowed({"source": "manual"}, False)[0] is True
+    assert verify_finding._exec_allowed({"source": "sarif:nuclei"}, False)[0] is False
+    assert verify_finding._exec_allowed({"source": "sarif:nuclei"}, True)[0] is True
+
+
 def test_verdict_syncs_to_registry(monkeypatch, tmp_path):
     # After verify confirms a finding, the central registry must reflect it so
     # report/browse don't show a stale 'candidate'.

@@ -135,8 +135,9 @@ The orchestration entry points are documented in
 - **Pipeline** — `run` (plan→execute→verify→critic→compound), `verify_finding`, `critic`, `ultrareview`, `compounder`, `orchestrate`.
 - **Domain packs** — [`profiles/`](profiles/) (web-appsec, secrets, cloud-iac, deps, binary, llm) + a [hunt-skill library](skills/) spanning [many vuln classes](docs/VULN_TAXONOMY.md).
 - **Agents** — [`agents/`](agents/) specialist roles (recon, web/code/cloud/deps/secrets/binary hunters, triage, validator, chain-builder, reporter) dispatchable as a swarm.
-- **Validators** — `tenant_diff` (two-identity proof), `verify_finding` (re-runnable repro contracts).
+- **Validators** — `tenant_diff` (two-identity proof), `verify_finding` (re-runnable repro contracts; refuses to exec untrusted-source repros without `--allow-exec`).
 - **DAST** — `tools/dast.py` + nuclei-style templates.
+- **Ops** — `sechound doctor` (preflight: backend/deps/tools/config), `Dockerfile`, CI + sanitization gate.
 
 Ships with **no target data** — see [`SANITIZATION.md`](SANITIZATION.md) for the
 bar every file clears (no hosts, IDs, credentials, or findings), enforced in CI.

@@ -1,6 +1,7 @@
 ---
 name: hunt-ssrf
 description: SSRF hunt playbook — outbound-HTTP sinks, egress allow-list bypass, metadata-endpoint reach. A worked example of the hunt-skill format.
+domain: web
 ---
 
 # hunt-ssrf

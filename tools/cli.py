@@ -29,6 +29,7 @@ SUBCOMMANDS = {
     "critic": "critic",
     "compound": "compounder",
     "report": "report",
+    "doctor": "doctor",
 }
 
 HELP = {
@@ -45,6 +46,7 @@ HELP = {
     "critic": "adversarial critic pass over verification results",
     "compound": "fold confirmed findings back into knowledge",
     "report": "list findings / export markdown or SARIF",
+    "doctor": "preflight check: backend, deps, tools, config readiness",
 }
 
 

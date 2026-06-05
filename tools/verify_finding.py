@@ -80,12 +80,31 @@ def _run_repro(eng: Path, repro: dict) -> tuple[bool, str, list[str]]:
     return passed, output, missing
 
 
+# Sources whose repro scripts we will NOT auto-execute — they may have been
+# authored by someone else (imported scan output, external/shared registries).
+# Running their bash blindly is operator-RCE.
+_UNTRUSTED_PREFIXES = ("sarif:", "import", "external", "shared")
+
+
+def _exec_allowed(finding: dict, allow_exec: bool) -> tuple[bool, str]:
+    if allow_exec:
+        return True, ""
+    src = (finding.get("source") or "").lower()
+    if any(src.startswith(p) for p in _UNTRUSTED_PREFIXES):
+        return False, f"source={src!r} is not locally authored"
+    return True, ""
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("engagement_dir", nargs="?", default=None)
     ap.add_argument("target", nargs="?", default="all", help="finding id substring or 'all'")
     ap.add_argument("--skip-precheck", action="store_true",
                     help="skip the duplicate-root-cause gate")
+    ap.add_argument("--allow-exec", action="store_true",
+                    help="run repro scripts even for imported/untrusted-source findings (repros run arbitrary bash)")
+    ap.add_argument("--no-exec", action="store_true",
+                    help="never run any repro script (dry inventory)")
     args = ap.parse_args()
 
     eng = resolve_engagement_arg(args.engagement_dir)
@@ -115,6 +134,15 @@ def main() -> int:
                 continue
 
         repro = ((finding.get("evidence") or {}).get("repro")) or {}
+        if repro and args.no_exec:
+            print(f"[verify] {fid}: --no-exec set — skipping repro")
+            continue
+        if repro:
+            ok_exec, why = _exec_allowed(finding, args.allow_exec)
+            if not ok_exec:
+                print(f"[verify] {fid}: REFUSING to run repro ({why}). "
+                      "Pass --allow-exec to run it (it executes arbitrary bash).")
+                continue
         if not repro:
             print(f"[verify] {fid}: no evidence.repro contract — leaving as "
                   f"{finding.get('status', 'candidate')!r}")

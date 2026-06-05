@@ -32,6 +32,36 @@ ID               SEVERITY  STATUS      SERVICE  TITLE
 SH-API-0001      HIGH      confirmed   api      IDOR on /api/objects/{id} — no object-level authorization
 ```
 
+## Triage a real scan (interop, ~5 min)
+
+The fastest real value: run a scanner you already use on any repo, then let
+SecHound dedup + LLM-triage the noise. Check readiness first:
+
+```bash
+sechound doctor                       # backend + deps + tools readiness
+export SECHOUND_LLM=anthropic         # or openai / gemini / claude / a local model
+export ANTHROPIC_API_KEY=...
+
+# Scan any codebase with semgrep (or CodeQL/Trivy/gitleaks — all SARIF):
+semgrep --config auto --sarif -o scan.sarif /path/to/repo
+
+sechound import scan.sarif --domain web   # normalized + deduped into the registry
+sechound triage --profile web-appsec      # LLM sorts true/false positive, ranks (batched)
+sechound report --status candidate --format md > triage.md
+```
+
+`triage` batches findings per call (`--batch-size`, `--max-batches` to cap cost,
+`--skip-info` to drop noise), so a few-thousand-hit scan is a handful of calls.
+
+## Docker
+
+```bash
+docker build -t sechound .
+docker run --rm -e SECHOUND_LLM=anthropic -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  -v "$PWD/findings:/app/findings" -v "$PWD/scan.sarif:/scan.sarif" \
+  sechound import /scan.sarif
+```
+
 ## Adding the LLM loop
 
 The demo shows the spine. The full pipeline layers an LLM planner/executor on

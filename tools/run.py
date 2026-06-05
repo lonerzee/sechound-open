@@ -26,7 +26,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sechound_lib import resolve_engagement_arg, sechound_model, utcnow, repo_root, profile_context
+from sechound_lib import (resolve_engagement_arg, sechound_model, utcnow, repo_root,
+                          profile_context, skill_index_text, skill_context, load_profile)
 import findings_db
 import llm
 
@@ -89,19 +90,33 @@ def iterate(eng: Path, goal: str, n: int, model: str, timeout: int, profile: str
               f"In-scope (config/targets.yaml):\n```json\n{json.dumps(scope.get('targets', []), indent=2)}\n```\n\n"
               f"{knowledge}{prof_ctx}")
 
-    # 1. PLAN
+    # 1. PLAN — give the planner the skill catalog so it can pick hunts by name.
     print(f"\n=== iteration {iter_no}: plan ===")
-    plan_res = llm.complete(_prompt("planner"), common + "\nProduce the plan.",
+    plan_res = llm.complete(_prompt("planner"),
+                            common + "\n\n" + skill_index_text() + "\nProduce the plan.",
                             model=model, timeout=timeout)
     plan = next((o for o in _extract_fenced(plan_res.text) if isinstance(o, dict)), {})
     (eng / "iteration_plan.json").write_text(json.dumps(plan or {"raw": plan_res.text}, indent=2))
     hyps = plan.get("hypotheses", [])
     print(f"[run] {len(hyps)} hypotheses planned")
 
-    # 2. EXECUTE
+    # 2. EXECUTE — inject the actual skill bodies the plan calls for (+ profile skills).
     print(f"=== iteration {iter_no}: execute ===")
+    skill_names: list[str] = []
+    for h in hyps:
+        hunt = str(h.get("hunt") or "")
+        if "profile-skill:" in hunt:
+            skill_names.append(hunt.split("profile-skill:", 1)[1].strip())
+        cat = str(h.get("category") or "")
+        if cat:
+            skill_names.append(f"hunt-{cat}")          # best-effort name match
+    prof = load_profile(profile)
+    if prof:
+        skill_names += prof.get("skills", [])
+    skills_blob = skill_context(skill_names)
     exec_input = (common + "\n## Plan\n```json\n" + json.dumps(plan, indent=2) +
-                  "\n```\nRun the hunt and emit candidate findings as fenced ```json blocks.")
+                  "\n```" + skills_blob +
+                  "\nRun the hunt and emit candidate findings as fenced ```json blocks.")
     exec_res = llm.complete(_prompt("executor"), exec_input, model=model,
                             timeout=timeout, tools="Bash,Read")
     candidates = [o for o in _extract_fenced(exec_res.text)

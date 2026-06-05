@@ -58,3 +58,20 @@ def test_triage_extract_json():
     importlib.reload(triage)
     out = triage._extract_json('noise {"verdict": "likely_false_positive", "reason": "x"} tail')
     assert out["verdict"] == "likely_false_positive"
+
+
+def test_triage_extract_array():
+    import triage
+    importlib.reload(triage)
+    arr = triage._extract_array('prose ```json\n[{"id":"A","verdict":"likely_true_positive"},'
+                                '{"id":"B","verdict":"needs_verification"}]\n``` tail')
+    assert [x["id"] for x in arr] == ["A", "B"]
+
+
+def test_triage_batch_maps_by_id(monkeypatch):
+    import triage
+    importlib.reload(triage)
+    monkeypatch.setattr(triage.llm, "complete", lambda *a, **k: type(
+        "R", (), {"error": "", "text": '[{"id":"X","verdict":"likely_false_positive","reason":"fixture"}]'})())
+    out = triage._triage_batch([{"id": "X", "title": "t"}], "checklist", "m", 5, False)
+    assert out["X"]["verdict"] == "likely_false_positive"

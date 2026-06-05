@@ -1,6 +1,7 @@
 ---
 name: hunt-template
 description: Template for a vuln-class hunt playbook. Copy this directory to skills/hunt-<class>/ and fill in. A hunt skill encodes WHERE a class lives in your target, the controls that neutralize it, and the bar for validation.
+domain: template
 ---
 
 # hunt-<class> (template)

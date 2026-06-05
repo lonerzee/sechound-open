@@ -1,6 +1,7 @@
 ---
 name: hunt-idor
 description: IDOR/BOLA hunt playbook — object-level authorization, cross-tenant reads, the mandatory two-identity diff. A worked example of the hunt-skill format.
+domain: web
 ---
 
 # hunt-idor

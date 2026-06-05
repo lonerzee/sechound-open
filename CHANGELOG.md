@@ -22,9 +22,22 @@ All notable changes to this project are documented here. Format loosely follows
 - Docs: `VULN_TAXONOMY.md`, `INTEGRATIONS.md`, `EVIDENCE_HYGIENE.md`; README
   repositioned as a layer-over-scanners; new `import`/`triage`/`dast` CLI verbs.
 
+- **Skills are now machinery, not just docs:** `sechound_lib` loads skill
+  bodies + a catalog and injects them into the planner (catalog) and executor
+  (the skills the plan/profile call for). Profiles' `skills:` lists are parsed.
+- **Triage scales + is safer:** `triage.py` batches findings per LLM call
+  (`--batch-size`, `--max-batches` cost cap, `--skip-info`) instead of one call
+  each. `verify_finding` refuses to run repro scripts from imported/untrusted
+  sources (`sarif:*`, etc.) without `--allow-exec` — closes an operator-RCE path.
+- **Packaging:** `sechound doctor` preflight, a `Dockerfile`, and a real-scan
+  interop quickstart.
+
 ### Fixed
 - `claude --allowedTools` is variadic and swallowed a trailing positional
   prompt; the prompt now goes on stdin (every tool-using stage was exiting 1).
+- Schema↔tools drift: `findings_db`/`report` now read `component`/`location`/
+  `domain` (not just `service`/`endpoint`); dedup collapses cross-scanner hits on
+  the same location; profiles' FP patterns + invariants are actually injected.
 
 ## [0.1.0] — 2026-06-04
 

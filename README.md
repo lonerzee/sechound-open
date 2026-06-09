@@ -9,7 +9,7 @@
 Scanners are good at finding candidates and bad at the part that follows: which
 hits are real, which are duplicates of the same root cause, and which survive a
 live reproduction. That triage *is* the work. SecHound bakes it in — and nothing
-becomes a `confirmed` finding on a model's say-so. 📝 [Read the build story](BLOG.md).
+becomes a `confirmed` finding on a model's say-so.
 
 > **See it work in 10s, no API key:** `bash examples/demo.sh` — confirms a real
 > IDOR end-to-end against a bundled vulnerable target. Walkthrough in

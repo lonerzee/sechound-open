@@ -34,3 +34,7 @@ venv/
 .DS_Store
 .idea/
 .vscode/
+
+# --- local-only launch collateral (personal, never published) ---
+BLOG.md
+LINKEDIN.md

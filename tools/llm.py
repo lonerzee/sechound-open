@@ -12,6 +12,8 @@ Pick the backend with $SECHOUND_LLM:
     anthropic   Anthropic Messages API (needs `anthropic` + $ANTHROPIC_API_KEY).
     openai      OpenAI-compatible Chat Completions API (needs `openai` +
                 $OPENAI_API_KEY; set $OPENAI_BASE_URL for Ollama/LM Studio/etc).
+    gemini      Google Gemini API (needs `google-generativeai` +
+                $GEMINI_API_KEY or $GOOGLE_API_KEY).
 
 Capability note: `tools=` (agentic code-reading) and `stream_to=` are honored
 only by agentic backends (`claude`, and `command` if your command is itself

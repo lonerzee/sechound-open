@@ -4,28 +4,33 @@
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 
-**An LLM-orchestrated security audit framework.**
+**The triage-and-verification layer for your security scanners. Any model.**
+
+Scanners are good at finding candidates and bad at the part that follows: which
+hits are real, which are duplicates of the same root cause, and which survive a
+live reproduction. That triage *is* the work. SecHound bakes it in — and nothing
+becomes a `confirmed` finding on a model's say-so. 📝 [Read the build story](BLOG.md).
 
 > **See it work in 10s, no API key:** `bash examples/demo.sh` — confirms a real
 > IDOR end-to-end against a bundled vulnerable target. Walkthrough in
 > [`docs/QUICKSTART.md`](docs/QUICKSTART.md).
 
-SecHound turns a vague request ("audit this service for SSRF") into a verifiable,
-reproducible pipeline: code-level candidate discovery → live reproduction →
-adversarial critique → de-duplicated, false-positive-filtered findings. The
-orchestration, scoring, and finding-management logic are plain Python and
-target-agnostic.
+Three things make it not just another scanner:
 
-It is also **model-agnostic and modular**: every stage talks to an LLM through a
-single seam (`tools/llm.py`), so you can drive it with the Claude Code CLI, a
-local model via Ollama, or any OpenAI-/Anthropic-compatible API by setting one
-environment variable. See [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
-
-**It's a layer, not another scanner.** SecHound's edge is the triage and
-verification that nobody enjoys doing by hand. Pipe your existing scanners in
-(semgrep, CodeQL, nuclei, Trivy, grype, gitleaks — all SARIF), and it
-de-duplicates by root cause, LLM-triages true vs. false positive, verifies the
-real ones, and exports ranked findings + SARIF:
+- **A layer, not a scanner.** Pipe your existing tools in as SARIF (semgrep,
+  CodeQL, nuclei, Trivy, grype, gitleaks). SecHound de-duplicates by root cause,
+  LLM-triages true vs. false positive, live-reproduces the real ones, and exports
+  ranked findings back out as SARIF. It complements your toolchain instead of
+  competing with it.
+- **Model-agnostic.** Every stage talks to an LLM through one seam
+  (`tools/llm.py`): Claude Code CLI, a local model via Ollama, or any
+  OpenAI-/Anthropic-/Gemini-compatible API — one env var, no stage code changes.
+  Run it fully local when source can't leave the building. See
+  [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
+- **Verification is the product.** Kill gate before anything is filed; mandatory
+  invalidator analysis; live-repro required to promote `candidate → confirmed`;
+  a two-identity diff (`tenant_diff`) for IDOR/BOLA. The part humans hate, done
+  mechanically.
 
 ```bash
 semgrep --sarif -o out.sarif .
@@ -34,7 +39,7 @@ python3 tools/triage.py                                # LLM sorts TP/FP, ranks
 python3 tools/report.py --status candidate --format md
 ```
 
-**It's domain-neutral.** Not just web/API — the pipeline and registry work for
+**Domain-neutral.** Not just web/API — the pipeline and registry work for
 cloud/IaC, dependencies, secrets, native/binary, and LLM apps. Domain specifics
 live in optional [profiles](profiles/) and a library of [hunt
 skills](skills/); the [vulnerability taxonomy](docs/VULN_TAXONOMY.md) lists
@@ -147,6 +152,14 @@ bar every file clears (no hosts, IDs, credentials, or findings), enforced in CI.
 SecHound is offensive security tooling. Use it **only** against systems you own
 or are explicitly authorized to test. You are responsible for staying within
 your scope and the law. See `LICENSE`.
+
+## References
+
+Two things were useful to look at while building: Anthropic's **defender's loop**
+(security as a repeatable model → hunt → validate → hunt-for-variants cycle) and
+**Claude BugHunter** (a library of focused, reusable hunt skills an agent is
+pointed through). SecHound's own contribution is the verification gates and the
+persistent, compounding knowledge.
 
 ## License
 

@@ -42,8 +42,20 @@ def test_diff_isolation_holds():
     assert tenant_diff.classify(200, "secret", 404, "") == "isolation_holds"
 
 
-def test_diff_scoped_per_identity():
-    assert tenant_diff.classify(200, "A-data", 200, "B-data") == "scoped_per_identity"
+def test_diff_possible_leak():
+    # Both 2xx on the same resource URL, attacker got different non-empty content:
+    # ambiguous → review-grade, not silently "safe".
+    assert tenant_diff.classify(200, "A-data", 200, "B-data") == "possible_leak"
+
+
+def test_diff_scoped_per_identity_empty_attacker_body():
+    # Attacker got 2xx but no content → its own empty view, not a leak.
+    assert tenant_diff.classify(200, "A-data", 200, "") == "scoped_per_identity"
+
+
+def test_possible_leak_is_not_confirm_grade():
+    # Only cross_tenant_leak auto-confirms; possible_leak must stay review-only.
+    assert tenant_diff.classify(200, "A-data", 200, "B-data") != "cross_tenant_leak"
 
 
 def test_diff_diverged():

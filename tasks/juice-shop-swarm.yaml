@@ -1,0 +1,44 @@
+# Black-box parallel swarm for OWASP Juice Shop (live target, no local source).
+#   python3 tools/orchestrate.py engagements/juice-shop tasks/juice-shop-swarm.yaml
+#
+# Read-only hunting lanes run concurrently; the validate lane serializes behind
+# the live-mutation mutex. Candidates emitted in ```json fences auto-ingest+dedup.
+
+run_id: juice-shop-swarm
+timeout: 1200
+
+# Shared context every lane is told (kept in each user_input for headless lanes):
+#   Target: http://127.0.0.1:3000  (self-owned local OWASP Juice Shop, full authz)
+#   Two identities: config/juice-shop.bearer (admin id=1), config/juice-shop-b.bearer (jim, customer id=2)
+#     use:  -H "Authorization: Bearer $(cat config/juice-shop.bearer)"
+#   IDOR/BOLA: tools/tenant_diff.py --url ... --header-a "Authorization: Bearer $(cat config/juice-shop.bearer)" --header-b "Authorization: Bearer $(cat config/juice-shop-b.bearer)"
+#   Already CONFIRMED (do NOT re-file): /rest/user/login SQLi, /rest/basket/{id} BOLA,
+#     /api/Users authz/PII, /ftp confidential doc, /ftp null-byte extension bypass.
+#   Emit each NEW candidate as a fenced ```json object with: title, severity,
+#     component(api|web), endpoint, summary, and evidence.repro {script,expected_signals}.
+
+lanes:
+  - name: recon
+    agent_file: agents/recon.md
+    user_input: "Target http://127.0.0.1:3000 (OWASP Juice Shop, self-owned local, full authorization). Enumerate the REST/API attack surface: crawl the SPA's main.js for route/endpoint strings, list /rest/* and /api/* endpoints, identify parameters and which require auth. Auth tokens: config/juice-shop.bearer (admin), config/juice-shop-b.bearer (jim/customer). Output a ranked endpoint inventory other lanes will hunt. Do not re-file the 5 already-confirmed findings."
+
+  - name: injection
+    agent_file: agents/web-hunter.md
+    user_input: "Hunt INJECTION on http://127.0.0.1:3000: SQL/NoSQL injection (beyond the known /rest/user/login bypass — try other query params, /rest/products/search UNION, order/feedback endpoints), reflected & stored XSS (product reviews, feedback, search reflection, username), SSTI, OS command injection, and XXE. Use tokens in config/juice-shop.bearer & config/juice-shop-b.bearer. Emit fenced ```json candidates with a curl-based evidence.repro and expected_signals. Be concrete with real responses."
+
+  - name: access-control
+    agent_file: agents/web-hunter.md
+    user_input: "Hunt BROKEN ACCESS CONTROL on http://127.0.0.1:3000 with the two identities (config/juice-shop.bearer=admin, config/juice-shop-b.bearer=jim/customer). Look beyond the known basket BOLA and /api/Users: IDOR on orders/addresses/cards/feedback/reviews, modifying another user's basket items, forced browsing to admin (/api/admin*, /#/administration), JWT attacks (alg:none / unsigned / key confusion), and privilege escalation (register/promote to admin, role in token). Use tools/tenant_diff.py for two-identity proof. Emit fenced ```json candidates with evidence.repro."
+
+  - name: data-exposure-misc
+    agent_file: agents/web-hunter.md
+    user_input: "Hunt SENSITIVE DATA EXPOSURE & MISCONFIG on http://127.0.0.1:3000: other /ftp files & traversal variants, error-message/stack-trace leakage, exposed metrics/swagger/config endpoints, missing/weak security headers & CSP, CORS misconfig, open redirect variants, insecure deserialization, and SSRF (e.g. profile-image URL, order tracking). Tokens in config/juice-shop.bearer & config/juice-shop-b.bearer. Emit fenced ```json candidates with evidence.repro. Do not re-file the known /ftp confidential-doc or null-byte findings."
+
+  - name: business-logic
+    agent_file: agents/web-hunter.md
+    user_input: "Hunt BUSINESS LOGIC flaws on http://127.0.0.1:3000: coupon/discount manipulation, negative or fractional quantities in basket, price tampering, currency/precision abuse, race conditions on checkout/coupon redemption, weak password reset (security questions), and registration/role abuse. Use config/juice-shop-b.bearer (jim). Emit fenced ```json candidates with evidence.repro."
+
+  - name: validate
+    agent_file: agents/validator.md
+    validation: true
+    user_input: "Take the strongest fresh candidates emitted by sibling lanes for http://127.0.0.1:3000 and reproduce each live with a concrete curl/tenant_diff repro contract (script + expected_signals). Apply the FP checklist; promote only those that reproduce. Tokens: config/juice-shop.bearer, config/juice-shop-b.bearer."

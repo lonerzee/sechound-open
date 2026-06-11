@@ -23,9 +23,17 @@ ATTACKER (a different tenant/user that should NOT). Verdicts:
 
   cross_tenant_leak    B got 2xx with the same body A did → isolation BROKEN
   isolation_holds      B was denied (401/403/404) while A succeeded → good
-  scoped_per_identity  both 2xx but different bodies → each sees only its own
+  possible_leak        both 2xx, B got content on A's resource URL but a
+                       different body → ambiguous (legit per-identity scoping,
+                       or a leak with per-request variation). Flagged for review,
+                       NOT auto-confirmed.
+  scoped_per_identity  both 2xx but B's body is empty → B saw its own empty view
   responses_match      both identical AND not clearly A's resource → inconclusive
   diverged             statuses/sizes don't fit a clean pattern → inspect manually
+
+Only `cross_tenant_leak` is a confirm-grade signal (non-zero exit). `possible_leak`
+is deliberately review-grade: it stops the false negative where an IDOR returns
+the victim's resource with a body that isn't byte-identical to the attacker's own.
 """
 from __future__ import annotations
 
@@ -68,7 +76,13 @@ def classify(status_a: int, body_a: str, status_b: int, body_b: str) -> str:
     if a_ok and b_ok:
         if body_a == body_b and body_a.strip():
             return "cross_tenant_leak"   # B sees exactly what owner A sees
-        return "scoped_per_identity"     # both succeed but see different data
+        if body_b.strip():
+            # B got 2xx with content on A's resource URL but a different body.
+            # Could be legit per-identity scoping, or a real leak whose body
+            # varies per request (timestamps/nonces). Ambiguous → review, don't
+            # silently treat as safe.
+            return "possible_leak"
+        return "scoped_per_identity"     # B's response empty → its own empty view
     if a_ok and status_b in (401, 403, 404):
         return "isolation_holds"
     if body_a == body_b:
@@ -111,6 +125,9 @@ def main() -> int:
         print(f"\nVERDICT: {verdict}")
         if verdict == "cross_tenant_leak":
             print("  -> isolation BROKEN: attacker identity read the owner's resource.")
+        elif verdict == "possible_leak":
+            print("  -> REVIEW: attacker got 2xx on the owner's resource with a different "
+                  "body. Could be per-identity scoping or a leak — verify manually.")
 
     # Exit non-zero on a confirmed leak so it's usable as a repro signal in
     # verify_finding.py expected_signals (grep for 'cross_tenant_leak').

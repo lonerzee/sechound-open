@@ -1,0 +1,14 @@
+id: juice-ftp-confidential-doc
+info:
+  name: Confidential document served from /ftp without authorization
+  severity: medium
+  service: web
+requests:
+  - method: GET
+    path: /ftp/acquisitions.md
+    headers: {}
+    body: null
+    matchers:
+      status: [200]
+      words: ["confidential"]
+      negative_status: [401, 403, 404]

@@ -164,6 +164,12 @@ def resolve_engagement_arg(arg: str | None) -> Path:
 
     Order: explicit arg → $SECHOUND_ENGAGEMENT → walk up from cwd looking for a
     `.sechound/<id>/` marker → the most recent dir under engagements/.
+
+    The marker walk is bounded to this checkout: it never climbs above
+    repo_root(). A `.sechound/` directory outside the clone (e.g. the
+    `~/.sechound/` owned by a separate SecHound install) is deliberately
+    ignored, so two installs on one machine can't resolve each other's
+    engagements.
     """
     if arg:
         return Path(arg).resolve()
@@ -172,13 +178,17 @@ def resolve_engagement_arg(arg: str | None) -> Path:
     if env:
         return Path(env).resolve()
 
+    root = repo_root()
     cur = Path.cwd()
     for parent in [cur, *cur.parents]:
-        marker = parent / ".sechound"
-        if marker.is_dir():
-            subs = [p for p in marker.iterdir() if p.is_dir()]
-            if subs:
-                return sorted(subs, key=lambda p: p.stat().st_mtime)[-1]
+        if parent == root or root in parent.parents:  # only within this checkout
+            marker = parent / ".sechound"
+            if marker.is_dir():
+                subs = [p for p in marker.iterdir() if p.is_dir()]
+                if subs:
+                    return sorted(subs, key=lambda p: p.stat().st_mtime)[-1]
+        if parent == root:
+            break  # never climb above the checkout (avoids ~/.sechound collision)
 
     eng_root = repo_root() / "engagements"
     if eng_root.is_dir():

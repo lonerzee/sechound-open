@@ -38,3 +38,6 @@ venv/
 # --- local-only launch collateral (personal, never published) ---
 BLOG.md
 LINKEDIN.md
+
+# --- local auth material (never commit) ---
+config/*.bearer

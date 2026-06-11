@@ -48,7 +48,10 @@ python3 tools/tenant_diff.py \
 ```
 
 `confirmed` only on verdict `cross_tenant_leak` (B received A's data). `403/404`
-for B → `isolation_holds` (not a finding). Different bodies → `scoped_per_identity`.
+for B → `isolation_holds` (not a finding). Both 2xx with different bodies →
+`possible_leak`: do NOT dismiss — the victim's resource may differ from the
+attacker's own view or vary per request. Verify manually (compare B's body
+against A's resource, not against B's own), then file or drop.
 
 ## Known chains
 IDOR write (reassign owner / change tenant) → privilege escalation or account

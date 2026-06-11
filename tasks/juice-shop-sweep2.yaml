@@ -1,0 +1,39 @@
+# Broad second sweep — target the UNSOLVED, black-box-reachable categories.
+#   python3 tools/orchestrate.py engagements/juice-shop tasks/juice-shop-sweep2.yaml
+# Shared context (in each user_input): target http://127.0.0.1:3000, self-owned lab,
+# identities config/juice-shop.bearer (admin id=1) + config/juice-shop-b.bearer (jim id=2).
+# Avoid the 23 already-tracked findings; emit NEW candidates as fenced ```json with
+# title/severity/component/endpoint/summary + evidence.repro {script,expected_signals}.
+
+run_id: sweep2
+timeout: 1200
+
+lanes:
+  - name: redirects-input
+    agent_file: agents/web-hunter.md
+    user_input: "http://127.0.0.1:3000 — hunt UNVALIDATED REDIRECTS and IMPROPER INPUT VALIDATION. The /redirect?to= endpoint allowlists by substring: try ?to=https://evil.example/?x=https://github.com/bkimminich/juice-shop (whitelisted URL embedded). Also test deluxe-membership price/param tampering, quantity/coupon field validation, and email/URL field validation. Emit fenced json candidates with curl repros."
+
+  - name: auth-crypto
+    agent_file: agents/web-hunter.md
+    user_input: "http://127.0.0.1:3000 — hunt BROKEN AUTHENTICATION and CRYPTOGRAPHIC ISSUES beyond the known login-SQLi/alg:none/weak-password/JWT-hash. Try: forged JWT with HS256 using a guessable/public key, password reset via security question with known answers, OAuth/SSO flow flaws, 2FA bypass, predictable/weak password-reset tokens, weak coupon/token crypto (base64/ROT). Emit fenced json with repros."
+
+  - name: injection-deep
+    agent_file: agents/web-hunter.md
+    user_input: "http://127.0.0.1:3000 — hunt INJECTION beyond the known login + search SQLi. Try: NoSQL injection in /rest/products/reviews and order endpoints, OS command injection, SSTI, LDAP, and additional SQLi sinks (login email already known — find a DIFFERENT one). Emit fenced json with repros."
+
+  - name: access-control-deep
+    agent_file: agents/web-hunter.md
+    user_input: "http://127.0.0.1:3000 — hunt BROKEN ACCESS CONTROL beyond the known basket/users/address/feedback/review IDORs. Use both identities. Try: wallet/balance manipulation, payment-card IDOR (/api/Cards), deluxe-membership without payment, order/invoice IDOR, forced browsing to admin/accounting pages, web3/NFT or product-deletion endpoints. Use tools/tenant_diff.py. Emit fenced json with repros."
+
+  - name: data-misconfig-components
+    agent_file: agents/web-hunter.md
+    user_input: "http://127.0.0.1:3000 — hunt SENSITIVE DATA EXPOSURE, SECURITY MISCONFIG, OBSERVABILITY, and VULNERABLE COMPONENTS beyond known /ftp+metrics+CORS+stacktrace. Try: more /ftp files & legal/well-known paths, leaked API keys/tokens in JS bundles or responses, version/build disclosure revealing vulnerable deps, verbose headers, debug endpoints, robots/sitemap/.well-known, GraphQL introspection if present. Emit fenced json with repros."
+
+  - name: xxe-deser-automation
+    agent_file: agents/web-hunter.md
+    user_input: "http://127.0.0.1:3000 — hunt XXE, INSECURE DESERIALIZATION, and BROKEN ANTI-AUTOMATION. Try: XXE via XML in the complaint/file-upload (/file-upload accepts .xml/.zip), insecure deser in B2B/order import (YAML), captcha bypass, no rate-limit on login/reset (brute force), repetitive registration. Emit fenced json with repros."
+
+  - name: validate
+    agent_file: agents/validator.md
+    validation: true
+    user_input: "Reproduce the strongest fresh candidates from sibling lanes against http://127.0.0.1:3000 with concrete curl/tenant_diff repro contracts (script + expected_signals). Apply the FP checklist; promote only those that reproduce. Identities in config/juice-shop.bearer and config/juice-shop-b.bearer."

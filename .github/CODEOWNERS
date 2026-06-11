@@ -1,0 +1,12 @@
+# Code owners — auto-requested as reviewer on every PR.
+# Combined with branch protection ("require review from Code Owners"),
+# this guarantees nothing merges to main without sign-off.
+
+# Default owner for everything in the repo.
+*                       @lonerzee
+
+# The trust-critical surfaces — keep these explicit even though the
+# glob above already covers them, so the intent is obvious.
+/scripts/check_sanitization.sh   @lonerzee
+/.github/                        @lonerzee
+/tools/llm.py                    @lonerzee

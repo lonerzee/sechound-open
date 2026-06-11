@@ -47,8 +47,8 @@ what's covered. Specialist [agents](agents/) can be fanned out as a swarm.
 See [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) for how it plugs into your
 toolchain.
 
-> This is the open-source core. It ships with **no target data** — no hosts, no
-> credentials, no findings. You point it at *your own* authorized scope via
+> SecHound ships with **no target data** — no hosts, no credentials, no
+> findings. You point it at *your own* authorized scope via
 > `config/targets.yaml` (see `config/targets.example.yaml`).
 
 ---

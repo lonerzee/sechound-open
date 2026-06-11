@@ -1,10 +1,9 @@
 # Sanitization checklist
 
-This is the open-source core of SecHound. It must never contain data about any
-specific target. Every file ported from a private working copy passes this
-checklist **before** it lands.
+SecHound must never contain data about any specific target. Every file passes
+this checklist **before** it lands.
 
-## The bar (every ported file must clear all of these)
+## The bar (every file must clear all of these)
 
 - [ ] **No hostnames / domains** of any real target. Use `config/targets.yaml`
       (gitignored) and placeholders like `<TARGET_HOST>` in code and docs.
@@ -20,8 +19,8 @@ checklist **before** it lands.
 
 ## What is intentionally NOT in this repo
 
-These directories exist in the private working copy and are **excluded by
-design** — they are target-specific by nature:
+These directories are **excluded by design** — they are target-specific by
+nature and must never be committed:
 
 - `findings_registry/`, `findings/*.json` (real records) — target findings
 - `engagements/<dated>/` — real engagement artifacts
@@ -36,16 +35,14 @@ All of the above are in `.gitignore`. The example/templated versions
 (`*.example.yaml`, `findings/schema.json`, `findings/example-finding.json`) are
 synthetic and safe.
 
-## Porting workflow
+## Before you commit
 
-1. Copy the generic module into `sechound-open/`.
-2. Grep it for target markers before committing:
+1. Grep your change for target markers:
    ```bash
-   rg -i '<target-domain>|<tenant-ids>|cookie|bearer|jwe|@<company>\.com' path/to/file
+   rg -i '<target-domain>|<tenant-id>|cookie|bearer|jwe' path/to/file
    ```
-   (Maintain your own private grep pattern list — do not commit it here.)
-3. Replace anything that survives with a placeholder + a `config/` lookup.
-4. Tick the boxes above. Commit.
+2. Replace anything real with a placeholder + a `config/` lookup.
+3. Tick the boxes above. Commit.
 
 ## Reporting a leak
 

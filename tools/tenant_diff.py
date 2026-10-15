@@ -30,6 +30,8 @@ ATTACKER (a different tenant/user that should NOT). Verdicts:
   scoped_per_identity  both 2xx but B's body is empty → B saw its own empty view
   responses_match      both identical AND not clearly A's resource → inconclusive
   diverged             statuses/sizes don't fit a clean pattern → inspect manually
+  inconclusive         a request never completed (transport failure) → isolation
+                       was NOT tested; distinct non-zero exit, never read as safe
 
 Only `cross_tenant_leak` is a confirm-grade signal (non-zero exit). `possible_leak`
 is deliberately review-grade: it stops the false negative where an IDOR returns
@@ -71,6 +73,10 @@ def _curl(url: str, method: str, data: str | None, jar: str | None,
 
 
 def classify(status_a: int, body_a: str, status_b: int, body_b: str) -> str:
+    # A status of 0 means the request never completed (curl/transport failure).
+    # We never exercised isolation, so this is inconclusive — never a safe verdict.
+    if status_a == 0 or status_b == 0:
+        return "inconclusive"
     a_ok = 200 <= status_a < 300
     b_ok = 200 <= status_b < 300
     if a_ok and b_ok:
@@ -128,10 +134,19 @@ def main() -> int:
         elif verdict == "possible_leak":
             print("  -> REVIEW: attacker got 2xx on the owner's resource with a different "
                   "body. Could be per-identity scoping or a leak — verify manually.")
+        elif verdict == "inconclusive":
+            print("  -> INCONCLUSIVE: a request never completed (transport failure). "
+                  "Isolation was NOT tested — this is not a 'safe' result.")
 
     # Exit non-zero on a confirmed leak so it's usable as a repro signal in
-    # verify_finding.py expected_signals (grep for 'cross_tenant_leak').
-    return 2 if verdict == "cross_tenant_leak" else 0
+    # verify_finding.py expected_signals (grep for 'cross_tenant_leak'). A
+    # transport failure exits with a distinct code so "couldn't test" is never
+    # mistaken for "safe" (exit 0).
+    if verdict == "cross_tenant_leak":
+        return 2
+    if verdict == "inconclusive":
+        return 3
+    return 0
 
 
 if __name__ == "__main__":

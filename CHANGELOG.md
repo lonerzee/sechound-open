@@ -6,6 +6,14 @@ All notable changes to this project are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Fixed
+- **Propagated the inconclusive-not-safe rule to every falsifier** (final-review
+  MED): `tenant_diff` now returns `inconclusive` (exit 3) when a request never
+  completes (status 0) instead of `responses_match`/exit 0; `dast` returns
+  `inconclusive` (exit 3) when every request failed to reach the target instead
+  of "0 hits"/exit 0; `rag_probe` cross-context adds a positive control (the
+  planter must retrieve its own marker, else `inconclusive`) so a succeeding-but-
+  empty adapter isn't read as isolation, and `not_retrieved` now exits 3.
+  `mcp_probe` rejects malformed `--args` JSON with a clean message, not a traceback.
 - **Fixed-port labs could hand back silently-wrong verdicts** (dry-run MED): a
   stale/foreign server on 8731/8732 was used without notice. The labs now fail
   loudly on a bind conflict (non-zero exit + a clear message), `benchmark

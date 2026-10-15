@@ -344,6 +344,13 @@ def _emit(result: dict, as_json: bool) -> int:
     return 0
 
 
+def _args_json(s: str) -> dict:
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError as e:
+        sys.exit(f"--args is not valid JSON ({e}); example: --args '{{\"id\":\"R1\"}}'")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="MCP finding falsifier")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -392,7 +399,7 @@ def main(argv: list[str] | None = None) -> int:
         ca.initialize(); cb.initialize()
         res = check_workspace_idor(
             ca, cb, tool=args.tool,
-            args=json.loads(args.args), resource_uri=args.resource)
+            args=_args_json(args.args), resource_uri=args.resource)
         return _emit(res, args.json)
 
     if args.cmd == "result-injection":
@@ -403,7 +410,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             sys.exit("supply --url or --stdio")
         c = MCPClient(t); c.initialize()
-        return _emit(check_result_injection(c, args.tool, json.loads(args.args)), args.json)
+        return _emit(check_result_injection(c, args.tool, _args_json(args.args)), args.json)
 
     if args.cmd == "rug-pull":
         if args.stdio:

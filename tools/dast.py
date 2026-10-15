@@ -89,6 +89,12 @@ def _request(base_url: str, req: dict, jar: str | None, headers: list[str], time
     return status, out
 
 
+def _all_unreachable(statuses: list[int]) -> bool:
+    """Every request returned status 0 (curl/transport never completed) → the
+    target was unreachable, so '0 hits' means nothing. Not a clean scan."""
+    return bool(statuses) and all(s == 0 for s in statuses)
+
+
 def _match(status: int, body: str, m: dict) -> bool:
     if m.get("status") and status not in m["status"]:
         return False
@@ -121,10 +127,12 @@ def main() -> int:
         sys.exit(f"no templates in {_templates_dir()}")
 
     hits = 0
+    statuses: list[int] = []
     for t in templates:
         info = t.get("info", {})
         for req in t.get("requests", []):
             status, body = _request(args.base_url, req, args.jar, args.header, args.timeout)
+            statuses.append(status)
             if _match(status, body, req.get("matchers", {})):
                 hits += 1
                 path = req.get("path", "")
@@ -143,6 +151,11 @@ def main() -> int:
             else:
                 print(f"[ok ] {t.get('id')} — {req.get('method','GET')} {req.get('path','')} (status {status})")
 
+    if _all_unreachable(statuses):
+        print(f"\n[dast] INCONCLUSIVE: all {len(statuses)} request(s) failed to "
+              f"reach {args.base_url} (transport failure). '0 hits' here means the "
+              "target was unreachable, NOT that it is clean.", file=sys.stderr)
+        return 3
     print(f"\n[dast] {hits} hit(s) across {len(templates)} template(s). "
           "Hits are CANDIDATES — confirm with verify_finding.py.")
     return 0

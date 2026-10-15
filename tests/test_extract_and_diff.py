@@ -60,3 +60,10 @@ def test_possible_leak_is_not_confirm_grade():
 
 def test_diff_diverged():
     assert tenant_diff.classify(500, "err", 200, "ok") == "diverged"
+
+
+def test_diff_inconclusive_on_transport_failure():
+    # status 0 = request never completed; must be inconclusive, never a safe verdict
+    assert tenant_diff.classify(0, "", 0, "") == "inconclusive"
+    assert tenant_diff.classify(200, "owner", 0, "") == "inconclusive"   # attacker unreachable
+    assert tenant_diff.classify(0, "", 200, "x") == "inconclusive"       # owner unreachable

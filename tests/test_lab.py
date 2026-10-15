@@ -85,3 +85,9 @@ def test_dast_match_logic():
     assert dast._match(200, '{"role": "admin"}', {"status": [200], "words": ['"role": "admin"']})
     assert not dast._match(403, "forbidden", {"status": [200]})
     assert not dast._match(200, "ok", {"negative_status": [200]})
+
+
+def test_dast_all_unreachable_detection():
+    assert dast._all_unreachable([0, 0, 0]) is True        # target down → inconclusive
+    assert dast._all_unreachable([200, 0]) is False         # some reached
+    assert dast._all_unreachable([]) is False               # nothing ran

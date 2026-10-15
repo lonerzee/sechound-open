@@ -61,3 +61,16 @@ def test_failed_query_is_inconclusive():
     bad = rag_probe.CommandCorpus(ingest_cmd="true", query_cmd="false")
     res = probe_persistence(bad, identity="tenantA")
     assert res["verdict"] == "inconclusive"
+
+
+def test_cross_context_positive_control_catches_noop_adapter():
+    # commands succeed (rc 0) but retrieve nothing — the retrieval path is
+    # unproven, so reader-absence must NOT read as isolation_holds.
+    noop = rag_probe.CommandCorpus(ingest_cmd="true", query_cmd="true")
+    res = probe_cross_context(noop, planter="tenantA", reader="tenantB")
+    assert res["verdict"] == "inconclusive" and "positive control" in res["error"]
+
+
+def test_not_retrieved_exits_inconclusive():
+    assert rag_probe._emit({"check": "x", "verdict": "not_retrieved"}, True) \
+        == rag_probe.INCONCLUSIVE_EXIT

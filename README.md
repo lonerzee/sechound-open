@@ -164,9 +164,11 @@ RAG/memory poisoning (`rag_probe`), and the DAST-templated web classes
 (mass-assignment, BFLA, unbounded-consumption). The rest of the taxonomy ships as
 disciplined, OWASP-mapped *manual* playbooks. `tools/skill_lint.py` labels every
 skill `doc-only` when it has no backing probe, so the automation boundary is
-visible rather than implied. A green probe only means something it could actually
-reach: the MCP/RAG falsifiers return `inconclusive` (distinct non-zero exit), not
-"safe", when the target is unreachable.
+visible rather than implied. A green result never hides a failed test: every
+falsifier (`tenant_diff`, `mcp_probe`, `rag_probe`, `dast`) returns
+`inconclusive` with a distinct non-zero exit — never "safe" — when the target
+couldn't be reached, and `rag_probe` runs a positive control (the planter must
+retrieve its own marker) before reading reader-absence as isolation.
 
 Everything with a falsifier is proven end-to-end against bundled, loopback-only
 labs (`examples/vulnerable_target.py`, `examples/vulnerable_mcp.py`). Measure it:

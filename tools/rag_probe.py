@@ -41,6 +41,9 @@ import uuid
 from typing import Protocol
 
 CONFIRM_GRADE = {"cross_context_leak", "memory_persists"}
+# "not_retrieved" means the marker never came back even same-context: we couldn't
+# exercise the retrieval path, so it is inconclusive, not a safe result.
+INCONCLUSIVE_VERDICTS = {"inconclusive", "not_retrieved"}
 INCONCLUSIVE_EXIT = 3
 
 
@@ -153,11 +156,20 @@ def probe_cross_context(adapter: CorpusAdapter, *, planter: str, reader: str,
     marker, doc_id, text = _planted_doc(topic)
     try:
         adapter.ingest(planter, doc_id, text)
+        # POSITIVE CONTROL: the planter must be able to retrieve its OWN marker.
+        # If it can't, the retrieval path is unproven and the reader seeing
+        # nothing tells us nothing — inconclusive, not "isolation_holds".
+        control = adapter.query(planter, topic)
         retrieved = adapter.query(reader, topic)
     except CorpusError as e:
         return {"check": "rag-cross-context", "verdict": "inconclusive",
                 "marker": marker, "planter": planter, "reader": reader,
                 "error": str(e)}
+    if not marker_present(marker, control):
+        return {"check": "rag-cross-context", "verdict": "inconclusive",
+                "marker": marker, "planter": planter, "reader": reader,
+                "error": "positive control failed: planter could not retrieve its "
+                         "own marker — retrieval path unproven"}
     verdict = classify_cross_context(marker, retrieved)
     return {"check": "rag-cross-context", "verdict": verdict, "marker": marker,
             "planter": planter, "reader": reader,
@@ -195,8 +207,8 @@ def _emit(result: dict, as_json: bool) -> int:
                 print(f"  {k}: {v}")
     if result["verdict"] in CONFIRM_GRADE:
         return 2
-    if result["verdict"] == "inconclusive":
-        return INCONCLUSIVE_EXIT      # adapter failed — "couldn't exercise", not "safe"
+    if result["verdict"] in INCONCLUSIVE_VERDICTS:
+        return INCONCLUSIVE_EXIT      # couldn't exercise the target — not "safe"
     return 0
 
 

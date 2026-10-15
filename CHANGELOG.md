@@ -6,6 +6,12 @@ All notable changes to this project are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Fixed
+- **Fixed-port labs could hand back silently-wrong verdicts** (dry-run MED): a
+  stale/foreign server on 8731/8732 was used without notice. The labs now fail
+  loudly on a bind conflict (non-zero exit + a clear message), `benchmark
+  --autostart` refuses a port that's already in use and verifies lab identity
+  (web route + MCP `serverInfo.name`) before scoring, and `demo.sh` aborts if
+  8731 is occupied.
 - **Silent-safe false negative in the AI validators** (adoption-review HIGH): an
   unreachable/erroring MCP or RAG target was reported `stable`/`isolation_holds`
   with a clean exit. Both now return `inconclusive` with a distinct non-zero exit

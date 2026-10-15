@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import socket
 import subprocess
 import sys
 import time
@@ -77,6 +78,38 @@ def score(results: list[dict]) -> dict:
     }
 
 
+def _port_in_use(port: int, host: str = "127.0.0.1") -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.3)
+        return s.connect_ex((host, port)) == 0
+
+
+def _verify_web_lab(target: str) -> bool:
+    """Confirm we're talking to OUR web lab, not a stale/foreign server on the port."""
+    try:
+        req = urllib.request.Request(target.rstrip("/") + "/api/objects/1",
+                                     headers={"X-Token": "tokA"})
+        with urllib.request.urlopen(req, timeout=2) as r:
+            return "owner" in r.read().decode(errors="replace")
+    except Exception:
+        return False
+
+
+def _verify_mcp_lab(mcp: str) -> bool:
+    """Confirm the MCP server identifies as the bundled vulnerable lab."""
+    try:
+        body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                           "params": {}}).encode()
+        req = urllib.request.Request(mcp, data=body,
+                                     headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=2) as r:
+            info = json.loads(r.read().decode(errors="replace"))
+        return (info.get("result", {}).get("serverInfo", {}).get("name")
+                == "vulnerable-mcp")
+    except Exception:
+        return False
+
+
 def _wait(url: str, tries: int = 40) -> bool:
     for _ in range(tries):
         try:
@@ -106,6 +139,12 @@ def main(argv: list[str] | None = None) -> int:
     target, mcp = args.target, args.mcp
 
     if args.autostart:
+        # Refuse to score against a port something else already holds — a stale
+        # lab there would hand back silently-wrong verdicts (dry-run MED).
+        for p in (8731, 8732):
+            if _port_in_use(p):
+                sys.exit(f"[benchmark] port {p} already in use — a stale lab may be "
+                         f"running. Stop it (e.g. `lsof -ti tcp:{p} | xargs kill`) and retry.")
         ex = repo_root() / "examples"
         procs.append(subprocess.Popen([sys.executable, str(ex / "vulnerable_target.py")],
                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
@@ -115,6 +154,13 @@ def main(argv: list[str] | None = None) -> int:
         mcp = mcp or "http://127.0.0.1:8732/mcp"
         _wait(target + "/api/objects/1")
         _wait(mcp)
+        # Verify we reached OUR labs, not something else that answered.
+        if not _verify_web_lab(target) or not _verify_mcp_lab(mcp):
+            for pr in procs:
+                pr.terminate()
+            sys.exit("[benchmark] lab identity check failed — the server answering "
+                     "is not the bundled vulnerable lab. Aborting rather than scoring "
+                     "against the wrong target.")
     if not target or not mcp:
         sys.exit("supply --target and --mcp, or --autostart")
 

@@ -127,5 +127,12 @@ if __name__ == "__main__":
     if "--stdio" in sys.argv:
         _serve_stdio()
     else:
+        try:
+            srv = ThreadingHTTPServer((HOST, PORT), Handler)
+        except OSError as e:
+            sys.stderr.write(f"[mcp] cannot bind {HOST}:{PORT} ({e}). A stale lab may "
+                             f"be running there — probes would hit the WRONG server. "
+                             f"Stop it: lsof -ti tcp:{PORT} | xargs kill\n")
+            sys.exit(1)
         print(f"[mcp] vulnerable MCP server on http://{HOST}:{PORT}/mcp (Ctrl-C to stop)")
-        ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
+        srv.serve_forever()

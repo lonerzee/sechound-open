@@ -29,6 +29,7 @@ Authorized for local testing of this app only.
 from __future__ import annotations
 
 import json
+import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
@@ -145,5 +146,12 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    try:
+        srv = ThreadingHTTPServer((HOST, PORT), Handler)
+    except OSError as e:
+        sys.stderr.write(f"[target] cannot bind {HOST}:{PORT} ({e}). A stale lab may "
+                         f"be running there — probes would hit the WRONG server. "
+                         f"Stop it: lsof -ti tcp:{PORT} | xargs kill\n")
+        sys.exit(1)
     print(f"[target] vulnerable demo app on http://{HOST}:{PORT} (Ctrl-C to stop)")
-    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
+    srv.serve_forever()

@@ -23,6 +23,12 @@ cleanup() {
 trap cleanup EXIT
 
 echo "== 1. start the vulnerable target =="
+# Refuse to run against a stale lab already on 8731 — it would give wrong results.
+if python3 -c 'import socket,sys; s=socket.socket(); s.settimeout(0.3); sys.exit(0 if s.connect_ex(("127.0.0.1",8731))==0 else 1)' 2>/dev/null; then
+  echo "ERROR: 127.0.0.1:8731 is already in use — stop the stale lab first:" >&2
+  echo "       lsof -ti tcp:8731 | xargs kill" >&2
+  exit 1
+fi
 python3 examples/vulnerable_target.py & TARGET_PID=$!
 for _ in $(seq 1 20); do curl -s "$TARGET/api/objects/1" -H "X-Token: tokA" >/dev/null 2>&1 && break; sleep 0.2; done
 

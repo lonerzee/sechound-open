@@ -5,6 +5,8 @@ skills:
   - hunt-injection
   - hunt-xss
   - hunt-idor
+  - hunt-mass-assignment   # OWASP API3:2023 (BOPLA / mass assignment / excessive data exposure)
+  - hunt-function-authz    # OWASP API5:2023 (BFLA)
   - hunt-auth
   - hunt-ssrf
   - hunt-path-traversal

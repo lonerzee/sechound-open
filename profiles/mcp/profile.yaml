@@ -1,0 +1,24 @@
+name: mcp
+domain: [mcp, ai]
+description: >
+  Model Context Protocol security — the tool-definition surface, the per-call
+  authorization boundary, the result channel that feeds model context, and
+  cross-workspace/scope isolation. Tool poisoning, rug-pull redefinition,
+  workspace IDOR, confused-deputy chaining, credential passthrough, tool-result
+  injection. Overlaps OWASP LLM06 (excessive agency) and Agentic ASI02.
+skills:
+  - hunt-mcp
+  - hunt-excessive-agency   # the tool-authz boundary this rides on
+  - hunt-prompt-injection   # tool results are an indirect-injection channel
+fp_checklist: FP_CHECKLIST.md
+invariants: invariants.yaml
+validators:
+  - tenant_diff    # two-principal / two-workspace proof for MCP scope IDOR
+fp_notes: |
+  A tool being *reachable* or a call being *accepted* is not the finding. Confirm
+  requires an OBSERVED effect: a cross-workspace resource actually reached, a
+  redefined/poisoned tool's added behavior actually executed, an injected
+  credential actually used against an unintended target, or the host model
+  actually acting on instructions carried in a tool result. Echoing a tool
+  description back is not execution. Where isolation is the claim, prove it with
+  two distinct principals/workspaces, not one.

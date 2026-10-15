@@ -1,0 +1,38 @@
+# LLM invariants — state each, then try to falsify. Broken = candidate; prove the
+# observed effect to confirm. Map to the OWASP LLM Top 10 (2025).
+
+invariants:
+  - id: LLM-INV-01
+    claim: Model output cannot itself perform a privileged action; tools re-check authz.
+    falsify: Steer a tool call via injection the caller is not authorized for; observe it execute.
+    maps: LLM01, LLM06
+
+  - id: LLM-INV-02
+    claim: Untrusted ingested content cannot override instructions or steer tools.
+    falsify: Plant directives in a doc/page/tool result the model reads; observe effect.
+    maps: LLM01
+
+  - id: LLM-INV-03
+    claim: Model output is sanitized before any downstream sink (HTML/SQL/shell/HTTP).
+    falsify: Induce output containing a sink payload; observe the sink fire downstream.
+    maps: LLM05
+
+  - id: LLM-INV-04
+    claim: The system prompt carries no secret and no standalone capability.
+    falsify: Extract the system prompt; check it against the real value and for embedded secrets.
+    maps: LLM07, LLM02
+
+  - id: LLM-INV-05
+    claim: Retrieved/KB content is scoped per principal; one user's planted content is not served to another.
+    falsify: Plant content as A; retrieve/act on it as B or in a later context; observe the hop.
+    maps: LLM08, LLM04
+
+  - id: LLM-INV-06
+    claim: Per-principal rate/token/cost caps bound consumption; no unbounded loop.
+    falsify: Drive amplification/recursion; measure cost or tokens past the budget.
+    maps: LLM10
+
+  - id: LLM-INV-07
+    claim: Loaded model/adapter/plugin artifacts are pinned and provenance-checked.
+    falsify: Substitute an unsigned/unpinned artifact in a lab; observe the runtime load it.
+    maps: LLM03

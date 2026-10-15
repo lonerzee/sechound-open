@@ -6,6 +6,19 @@ All notable changes to this project are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Full OWASP AI coverage.** Expanded the `llm` profile to the complete OWASP
+  Top 10 for LLM Apps (2025) and added two new profiles: `agentic` (OWASP Top 10
+  for Agentic Applications, ASI01–ASI10) and `mcp` (Model Context Protocol
+  attack surface). 16 new hunt skills — `hunt-excessive-agency`,
+  `hunt-system-prompt-leak`, `hunt-rag-poisoning`, `hunt-insecure-output`,
+  `hunt-unbounded-consumption`, `hunt-ai-supply-chain`, `hunt-agent-goal-hijack`,
+  `hunt-agent-identity-privilege`, `hunt-inter-agent-comms`,
+  `hunt-cascading-failures`, `hunt-human-agent-trust`, `hunt-rogue-agents`,
+  `hunt-agent-code-exec`, `hunt-mcp`, plus web `hunt-mass-assignment` (API3/BOPLA)
+  and `hunt-function-authz` (API5/BFLA). Each skill maps to its OWASP ID and
+  keeps the observed-effect validation bar (no `confirmed` on the model merely
+  "agreeing"). `VULN_TAXONOMY.md` now carries the OWASP LLM/ASI/API mappings.
+
 - **Domain-neutral core.** Finding schema, FP checklist, prompts, and invariants
   generalized beyond web/multi-tenant; web specifics moved to a profile.
 - **Profiles** (`profiles/`) — domain packs (web-appsec, secrets, cloud-iac,

@@ -1,0 +1,31 @@
+name: agentic
+domain: [agentic, ai]
+description: >
+  Agentic application security — the OWASP Top 10 for Agentic Applications
+  (ASI01–ASI10): goal hijack, tool misuse, identity/privilege abuse, agentic
+  supply chain, unexpected code execution, memory/context poisoning, insecure
+  inter-agent comms, cascading failures, human-agent trust, rogue agents.
+skills:
+  - hunt-agent-goal-hijack        # ASI01
+  - hunt-excessive-agency         # ASI02 (shared with llm)
+  - hunt-agent-identity-privilege # ASI03
+  - hunt-ai-supply-chain          # ASI04 (shared with llm)
+  - hunt-agent-code-exec          # ASI05
+  - hunt-rag-poisoning            # ASI06 (memory/context poisoning; shared with llm)
+  - hunt-inter-agent-comms        # ASI07
+  - hunt-cascading-failures       # ASI08
+  - hunt-human-agent-trust        # ASI09
+  - hunt-rogue-agents             # ASI10
+  - hunt-prompt-injection         # the delivery vector for ASI01/ASI06
+fp_checklist: FP_CHECKLIST.md
+invariants: invariants.yaml
+validators:
+  - tenant_diff    # two-principal proof for ASI03 (identity/privilege abuse) and cross-agent/workspace reach
+fp_notes: |
+  The agent "deciding" or "agreeing" to do something is never the finding — the
+  finding is the agent taking an action it should not, with a principal or scope
+  it should not hold. Confirm requires an OBSERVED effect: an unauthorized tool
+  call, a cross-principal privileged action, a forged inter-agent message that
+  was acted on, a proven sandbox escape, or a rogue/persistent agent. Authz,
+  identity, and egress must be enforced by the runtime, not by the model's
+  judgement. Guards/classifiers reduce, not eliminate — test for bypass.

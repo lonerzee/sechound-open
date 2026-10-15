@@ -23,7 +23,9 @@ core. A target can use more than one.
 | `cloud-iac` | cloud / IaC | effective-config resolution, permission-actually-held checks |
 | `deps` | dependencies | reachability triage over raw CVE lists |
 | `binary` | native | reachable+triggerable bar, sanitizer/fuzz triage |
-| `llm` | AI / LLM apps | privilege-separation + tool-abuse focus |
+| `llm` | AI / LLM apps | full OWASP LLM Top 10 (2025); privilege-separation + observed-effect bar |
+| `agentic` | agentic AI | OWASP Top 10 for Agentic Apps (ASI01–ASI10); two-principal proof for privilege abuse |
+| `mcp` | Model Context Protocol | tool poisoning, workspace IDOR, confused-deputy, tool-result injection |
 
 ## profile.yaml
 

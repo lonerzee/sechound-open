@@ -1,12 +1,25 @@
 name: llm
 domain: [llm, ai]
-description: LLM/AI application security — prompt injection, tool abuse, data exfiltration.
+description: >
+  LLM application security — the full OWASP Top 10 for LLM Apps (2025):
+  prompt injection, sensitive info disclosure, supply chain, data/model
+  poisoning, improper output handling, excessive agency, system-prompt leakage,
+  vector/embedding weaknesses, misinformation, unbounded consumption.
 skills:
-  - hunt-prompt-injection
+  - hunt-prompt-injection       # LLM01
+  - hunt-system-prompt-leak     # LLM07 + LLM02
+  - hunt-ai-supply-chain        # LLM03
+  - hunt-rag-poisoning          # LLM08 + LLM04
+  - hunt-insecure-output        # LLM05 + LLM09
+  - hunt-excessive-agency       # LLM06
+  - hunt-unbounded-consumption  # LLM10
+fp_checklist: FP_CHECKLIST.md
+invariants: invariants.yaml
+validators: []
 fp_notes: |
   The model "agreeing" in text is not a finding. Confirm requires a real effect:
-  an unauthorized tool action, data exfiltration, or leakage of system
-  prompt/secrets. Privilege separation is the key control — tools must enforce
-  their own authz, not 'the model decided'. Input/output classifiers reduce, not
-  eliminate; test for bypass.
-validators: []
+  an unauthorized tool action, data exfiltration, leakage of a genuine system
+  prompt/secret (not a hallucinated one), a downstream sink firing on model
+  output, or measured resource/cost amplification. Privilege separation is the
+  key control — tools must enforce their own authz, not "the model decided".
+  Input/output classifiers reduce, not eliminate; test for bypass.

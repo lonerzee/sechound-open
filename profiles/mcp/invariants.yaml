@@ -1,0 +1,28 @@
+# MCP invariants — state each, then try to falsify. Broken = candidate; prove the
+# observed effect (two principals/workspaces where isolation is claimed) to confirm.
+
+invariants:
+  - id: MCP-INV-01
+    claim: A session in workspace W1 cannot call tools or read resources scoped to W2.
+    falsify: As W1, issue tools/call and resources/read naming a W2 object; observe success.
+    maps: workspace-idor
+
+  - id: MCP-INV-02
+    claim: Every tools/call is authorized against the caller's grant on that specific tool.
+    falsify: As a principal without the grant, call the tool directly; observe it execute.
+    maps: ASI02, LLM06
+
+  - id: MCP-INV-03
+    claim: A tool definition cannot change its behavior after approval without re-consent.
+    falsify: Redefine the tool mid-session; observe the new behavior run without re-approval.
+    maps: rug-pull
+
+  - id: MCP-INV-04
+    claim: Integration credentials a tool holds are scoped to the intended upstream only.
+    falsify: Induce the tool to use its credential against a different target; observe the call.
+    maps: confused-deputy, credential-passthrough
+
+  - id: MCP-INV-05
+    claim: Content returned in a tool result is data, not instructions the host will act on.
+    falsify: Return directive text in a tool result; observe the host model perform the probe action.
+    maps: tool-result-injection

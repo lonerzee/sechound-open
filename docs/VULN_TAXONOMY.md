@@ -14,7 +14,9 @@ Skills live in `skills/hunt-<class>/`; domain bundles live in `profiles/<domain>
 | Command injection | CWE-78 | `hunt-injection` |
 | Template / expression injection (SSTI) | CWE-1336/94 | `hunt-injection` |
 | Cross-site scripting (XSS) | CWE-79 | `hunt-xss` |
-| IDOR / BOLA / broken object auth | CWE-639/284 | `hunt-idor` |
+| IDOR / BOLA / broken object auth (API1) | CWE-639/284 | `hunt-idor` |
+| Mass assignment / BOPLA / excessive data exposure (API3) | CWE-915/213 | `hunt-mass-assignment` |
+| Broken function-level authz / BFLA (API5) | CWE-285/862 | `hunt-function-authz` |
 | Broken auth / session / JWT | CWE-287/384 | `hunt-auth` |
 | SSRF | CWE-918 | `hunt-ssrf` |
 | Path traversal / LFI | CWE-22/98 | `hunt-path-traversal` |
@@ -55,12 +57,42 @@ Skills live in `skills/hunt-<class>/`; domain bundles live in `profiles/<domain>
 | Integer overflow → bounds error | CWE-190 | `hunt-memory-safety` |
 | Format string | CWE-134 | `hunt-memory-safety` |
 
-## LLM / AI  (profile: `llm`)
+## LLM / AI  (profile: `llm`) — OWASP Top 10 for LLM Apps (2025)
+| OWASP | Class | Skill |
+|---|---|---|
+| LLM01 | Direct / indirect prompt injection | `hunt-prompt-injection` |
+| LLM02 | Sensitive information disclosure | `hunt-system-prompt-leak` |
+| LLM03 | Supply chain (model / adapter / plugin) | `hunt-ai-supply-chain` |
+| LLM04 | Data & model poisoning | `hunt-rag-poisoning` |
+| LLM05 | Improper output handling (output→sink) | `hunt-insecure-output` |
+| LLM06 | Excessive agency (tool / function abuse) | `hunt-excessive-agency` |
+| LLM07 | System-prompt leakage | `hunt-system-prompt-leak` |
+| LLM08 | Vector & embedding weaknesses (RAG) | `hunt-rag-poisoning` |
+| LLM09 | Misinformation / overreliance | `hunt-insecure-output` |
+| LLM10 | Unbounded consumption (denial-of-wallet) | `hunt-unbounded-consumption` |
+
+## Agentic  (profile: `agentic`) — OWASP Top 10 for Agentic Applications (ASI, 2026)
+| OWASP | Class | Skill |
+|---|---|---|
+| ASI01 | Agent goal hijack | `hunt-agent-goal-hijack` |
+| ASI02 | Tool misuse & exploitation | `hunt-excessive-agency` |
+| ASI03 | Identity & privilege abuse | `hunt-agent-identity-privilege` |
+| ASI04 | Agentic supply chain | `hunt-ai-supply-chain` |
+| ASI05 | Unexpected code execution (sandbox escape) | `hunt-agent-code-exec` |
+| ASI06 | Memory & context poisoning | `hunt-rag-poisoning` |
+| ASI07 | Insecure inter-agent communication | `hunt-inter-agent-comms` |
+| ASI08 | Cascading failures | `hunt-cascading-failures` |
+| ASI09 | Human-agent trust exploitation | `hunt-human-agent-trust` |
+| ASI10 | Rogue agents | `hunt-rogue-agents` |
+
+## MCP  (profile: `mcp`) — Model Context Protocol attack surface
 | Class | Skill |
 |---|---|
-| Direct / indirect prompt injection | `hunt-prompt-injection` |
-| Tool / function-call abuse | `hunt-prompt-injection` |
-| Training/RAG data exfiltration | `hunt-prompt-injection` |
+| Tool poisoning / rug-pull redefinition | `hunt-mcp` |
+| Server scope / workspace IDOR | `hunt-mcp` |
+| Confused-deputy tool chaining | `hunt-mcp` |
+| Credential / token passthrough abuse | `hunt-mcp` |
+| Prompt injection via tool results | `hunt-mcp` + `hunt-prompt-injection` |
 
 ## Adding a class
 Drop a `skills/hunt-<class>/SKILL.md` (copy `skills/hunt-template/`), give it a

@@ -6,6 +6,13 @@ All notable changes to this project are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Benchmark with condition tracking.** `tools/benchmark.py` + `bench/suite.yaml`
+  run the real probes against the bundled labs and score detection per class,
+  recording the conditions (box level, hints) alongside the score — the one
+  thing the 2026 agent-pentest surveys say every result omits. `--autostart`
+  stands the labs up; positive cases must be detected and negative (safe-route)
+  cases must not be flagged (false-positive control). Bundled suite scores 1.0
+  with 0 false positives; `--min-rate` makes it a regression gate.
 - **Disclosed-report → skill miner.** `tools/skill_miner.py` ingests a corpus of
   disclosed reports and emits a hunt-skill playbook per class where every pattern
   (sink / control / bypass / chain) is attributed to the report(s) it came from —

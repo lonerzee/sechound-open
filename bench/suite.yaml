@@ -1,0 +1,78 @@
+# Benchmark ground truth against the bundled labs. Each case runs a real probe
+# and passes when `expect` appears in its output. `kind: positive` = a planted
+# bug that must be detected; `kind: negative` = a safe route that must NOT be
+# flagged (measures false positives). {target} and {mcp} are substituted with the
+# running lab URLs.
+#
+# box:   white | grey | black  (source available / authed-no-source / no-auth-no-source)
+# hints: whether the probe was pointed at the exact sink (these cases are hinted;
+#        blind-discovery is a separate, harder condition — recorded honestly).
+meta:
+  hints: provided        # targeted probes, not blind discovery
+  labs: [vulnerable_target, vulnerable_mcp]
+
+cases:
+  - id: idor-read
+    class: idor
+    box: grey
+    kind: positive
+    expect: cross_tenant_leak
+    cmd: >
+      {py} tools/tenant_diff.py --url {target}/api/objects/1
+      --header-a "X-Token: tokA" --header-b "X-Token: tokB"
+
+  - id: idor-safe-negative
+    class: idor
+    box: grey
+    kind: negative
+    expect: isolation_holds
+    cmd: >
+      {py} tools/tenant_diff.py --url {target}/api/secure/objects/1
+      --header-a "X-Token: tokA" --header-b "X-Token: tokB"
+
+  - id: mass-assignment
+    class: mass-assignment
+    box: black
+    kind: positive
+    expect: "[HIT]"
+    cmd: >
+      {py} tools/dast.py --base-url {target} --header "X-Token: tokB"
+      --template mass-assignment
+
+  - id: bfla
+    class: function-authz
+    box: black
+    kind: positive
+    expect: "[HIT]"
+    cmd: >
+      {py} tools/dast.py --base-url {target} --header "X-Token: tokB"
+      --template bfla-admin
+
+  - id: unbounded-consumption
+    class: unbounded-consumption
+    box: black
+    kind: positive
+    expect: "[HIT]"
+    cmd: >
+      {py} tools/dast.py --base-url {target} --header "X-Token: tokB"
+      --template unbounded
+
+  - id: mcp-workspace-idor
+    class: mcp
+    box: grey
+    kind: positive
+    expect: cross_workspace_leak
+    cmd: >
+      {py} tools/mcp_probe.py workspace-idor --url {mcp}
+      --header-a "Authorization: Bearer tokA" --header-b "Authorization: Bearer tokB"
+      --tool get_resource --args '{"resource_id":"r1"}'
+
+  - id: mcp-secure-negative
+    class: mcp
+    box: grey
+    kind: negative
+    expect: isolation_holds
+    cmd: >
+      {py} tools/mcp_probe.py workspace-idor --url {mcp}
+      --header-a "Authorization: Bearer tokA" --header-b "Authorization: Bearer tokB"
+      --tool get_resource_secure --args '{"resource_id":"r1"}'

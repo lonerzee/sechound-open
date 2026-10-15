@@ -5,6 +5,13 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-10-15
+
+Full OWASP LLM / Agentic / MCP attack-class coverage, backed by executable
+falsifiers (not just playbooks), a grounding gate, a benchmark with condition
+tracking, a skill miner and a depth lint — hardened over three adoption-review
+loops so no probe ever reads "safe" when it never reached the target.
+
 ### Fixed
 - **Propagated the inconclusive-not-safe rule to every falsifier** (final-review
   MED): `tenant_diff` now returns `inconclusive` (exit 3) when a request never

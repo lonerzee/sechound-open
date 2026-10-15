@@ -281,6 +281,16 @@ def check_rug_pull(before: dict[str, str], after: dict[str, str]) -> dict:
             "added_tools": sorted(set(after) - set(before))}
 
 
+def check_result_injection(client: MCPClient, tool: str, args: dict) -> dict:
+    """Call a tool and inspect its RESULT for instruction-like content that the
+    host would concatenate into model context. Review-grade: exposure is the
+    finding; full exploitation needs a model-in-the-loop (we don't fake one)."""
+    ok, text = call_outcome(client.tools_call(tool, args or {}))
+    verdict = classify_tool_result_injection(text)
+    return {"check": "result-injection", "verdict": verdict, "tool": tool,
+            "ok": ok, "evidence": text[:200]}
+
+
 # --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
@@ -316,6 +326,13 @@ def main(argv: list[str] | None = None) -> int:
     pi.add_argument("--args", default="{}", help="JSON arguments naming A's object")
     pi.add_argument("--resource", help="resource URI to read (instead of a tool)")
 
+    ri = sub.add_parser("result-injection", help="inspect a tool result for injected instructions")
+    _common(ri)
+    ri.add_argument("--header", action="append", default=[])
+    ri.add_argument("--stdio", help="stdio MCP command (instead of --url)")
+    ri.add_argument("--tool", required=True)
+    ri.add_argument("--args", default="{}")
+
     pr = sub.add_parser("rug-pull", help="snapshot/compare tool definitions")
     _common(pr)
     pr.add_argument("--header-a", action="append", default=[])
@@ -340,6 +357,16 @@ def main(argv: list[str] | None = None) -> int:
             ca, cb, tool=args.tool,
             args=json.loads(args.args), resource_uri=args.resource)
         return _emit(res, args.json)
+
+    if args.cmd == "result-injection":
+        if args.stdio:
+            t = stdio_transport(args.stdio, args.timeout)
+        elif args.url:
+            t = http_transport(args.url, args.header, args.timeout)
+        else:
+            sys.exit("supply --url or --stdio")
+        c = MCPClient(t); c.initialize()
+        return _emit(check_result_injection(c, args.tool, json.loads(args.args)), args.json)
 
     if args.cmd == "rug-pull":
         if args.stdio:

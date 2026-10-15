@@ -15,7 +15,8 @@ vm = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(vm)
 
 import mcp_probe
-from mcp_probe import MCPClient, check_workspace_idor, http_transport, stdio_transport
+from mcp_probe import (MCPClient, check_result_injection, check_workspace_idor,
+                      http_transport, stdio_transport)
 
 SCRIPT = str(ROOT / "examples" / "vulnerable_mcp.py")
 
@@ -47,6 +48,13 @@ def test_http_secure_tool_holds(http_url):
     res = check_workspace_idor(ca, cb, tool="get_resource_secure",
                                args={"resource_id": "r1"}, resource_uri=None)
     assert res["verdict"] == "isolation_holds"
+
+
+def test_http_result_injection_exposure(http_url):
+    c = MCPClient(http_transport(http_url, ["Authorization: Bearer tokA"], 10))
+    c.initialize()
+    res = check_result_injection(c, "fetch_note", {"note_id": "n1"})
+    assert res["verdict"] == "result_injection_exposure"   # note carried instructions
 
 
 # ---- stdio transport: real subprocess MCP server -------------------------

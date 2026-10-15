@@ -6,6 +6,16 @@ All notable changes to this project are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Executable AI validators (proof, not prose).** `tools/mcp_probe.py` — an MCP
+  JSON-RPC falsifier (two-principal workspace-IDOR diff, rug-pull tool-definition
+  detection, tool-result-injection exposure, credential-passthrough), and
+  `tools/rag_probe.py` — a plant→retrieve-later→diff harness for RAG/embedding/
+  memory poisoning (cross-context + persistence), corpus-agnostic via shell
+  adapters. Both follow the `tenant_diff` contract: a pure, unit-tested verdict
+  core and a non-zero exit only on a confirm-grade signal, so they drive a
+  `verify_finding` repro. The `mcp`/`agentic`/`llm` profiles now point at these
+  real validators instead of the HTTP-only `tenant_diff`; `hunt-mcp` and
+  `hunt-rag-poisoning` carry the exact invocations. +13 tests (now 61).
 - **Full OWASP AI coverage.** Expanded the `llm` profile to the complete OWASP
   Top 10 for LLM Apps (2025) and added two new profiles: `agentic` (OWASP Top 10
   for Agentic Applications, ASI01–ASI10) and `mcp` (Model Context Protocol

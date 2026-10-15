@@ -50,6 +50,17 @@ retrieve as tenant B, check whether A's marker surfaces. For memory: in session
 behavior.
 
 ## Validation bar
+Prove persistence / cross-context with the RAG falsifier — wrap your app's
+ingest and query as two commands and it plants, retrieves later, and diffs:
+
+```bash
+python3 tools/rag_probe.py cross-context \
+    --ingest-cmd 'curl -s -X POST https://app.example.test/kb -H "{auth}" -d @-' \
+    --query-cmd  'curl -s "https://app.example.test/search?q={query}" -H "{auth}"' \
+    --auth 'tenantA=Authorization: Bearer <A>' --auth 'tenantB=Authorization: Bearer <B>'
+# confirm-grade only on cross_context_leak / memory_persists (non-zero exit)
+```
+
 `confirmed` requires an OBSERVED effect in a later request: the planted content
 is actually retrieved and visibly alters the model's answer or a downstream
 action (the marker appears, or the injected instruction fires), OR tenant B's

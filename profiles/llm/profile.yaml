@@ -15,7 +15,8 @@ skills:
   - hunt-unbounded-consumption  # LLM10
 fp_checklist: FP_CHECKLIST.md
 invariants: invariants.yaml
-validators: []
+validators:
+  - rag_probe      # tools/rag_probe.py — RAG/memory cross-context + persistence falsifier
 fp_notes: |
   The model "agreeing" in text is not a finding. Confirm requires a real effect:
   an unauthorized tool action, data exfiltration, leakage of a genuine system

@@ -20,7 +20,9 @@ skills:
 fp_checklist: FP_CHECKLIST.md
 invariants: invariants.yaml
 validators:
-  - tenant_diff    # two-principal proof for ASI03 (identity/privilege abuse) and cross-agent/workspace reach
+  - tenant_diff    # ASI03 identity/privilege abuse over HTTP (two cookie jars)
+  - mcp_probe      # ASI02 tool misuse / MCP workspace IDOR + rug-pull
+  - rag_probe      # ASI06 memory & context poisoning (cross-context + persistence)
 fp_notes: |
   The agent "deciding" or "agreeing" to do something is never the finding — the
   finding is the agent taking an action it should not, with a principal or scope

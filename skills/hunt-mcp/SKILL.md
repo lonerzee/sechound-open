@@ -75,6 +75,23 @@ authorized to test (`mcp.example.test`).
   whether the injected credential is sent to the unintended host.
 
 ## Validation bar
+Prove it with the MCP falsifier, not by hand — two principals for the IDOR check,
+a before/after snapshot for rug-pull:
+
+```bash
+# workspace IDOR: call A's object while authenticated as B
+python3 tools/mcp_probe.py workspace-idor --url https://mcp.example.test/mcp \
+    --header-a "Authorization: Bearer <A>" --header-b "Authorization: Bearer <B>" \
+    --tool get_resource --args '{"workspace_id":"<W1>","resource_id":"<R1>"}'
+# confirm-grade only on verdict cross_workspace_leak (non-zero exit)
+
+# rug-pull: snapshot defs, get them approved, re-check later
+python3 tools/mcp_probe.py rug-pull --url https://mcp.example.test/mcp \
+    --header-a "Authorization: Bearer <A>" --snapshot /tmp/mcp_defs.json
+python3 tools/mcp_probe.py rug-pull --url https://mcp.example.test/mcp \
+    --header-a "Authorization: Bearer <A>" --compare /tmp/mcp_defs.json
+```
+
 `confirmed` requires an OBSERVED effect, two principals/workspaces where
 applicable:
 - **Scope/workspace IDOR:** principal B actually received or mutated principal

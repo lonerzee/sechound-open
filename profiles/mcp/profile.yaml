@@ -13,7 +13,7 @@ skills:
 fp_checklist: FP_CHECKLIST.md
 invariants: invariants.yaml
 validators:
-  - tenant_diff    # two-principal / two-workspace proof for MCP scope IDOR
+  - mcp_probe      # tools/mcp_probe.py — MCP JSON-RPC workspace-IDOR + rug-pull falsifier
 fp_notes: |
   A tool being *reachable* or a call being *accepted* is not the finding. Confirm
   requires an OBSERVED effect: a cross-workspace resource actually reached, a

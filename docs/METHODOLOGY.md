@@ -65,10 +65,31 @@ File as `candidate (code-only)`. Don't pre-retract — apply the FP patterns to
 For anything you intend to confirm:
 - reproduce against live authorized scope,
 - apply the FP checklist mechanically,
-- for cross-tenant/IDOR/BOLA, run the two-identity diff,
+- run the right **falsifier** for the class and read its verdict, not your hope:
+  - cross-tenant / IDOR / BOLA → `tenant_diff` (two identities),
+  - MCP workspace-IDOR / rug-pull / tool-result injection → `mcp_probe`,
+  - RAG / embedding / agent-memory poisoning → `rag_probe`,
 - run the critic to challenge your own verdict.
 
-Promote to `confirmed` only with captured evidence and a runnable repro.
+Every falsifier returns `inconclusive` (distinct non-zero exit) when it couldn't
+reach the target — **treat that as "not tested", never as "safe".** A clean exit
+only counts when the probe actually ran.
+
+Promote to `confirmed` only with captured evidence and a runnable repro, then run
+`grounding_gate.py` over the registry — a confirmed finding whose claims aren't
+backed by a logged observation (or that cites a quote/file:line that doesn't
+exist) is flagged `ungrounded` and must not ship.
+
+### AI / MCP / agentic classes
+
+For LLM, agentic, and MCP targets the bar is the same but the trap is specific:
+**the model "agreeing", echoing a payload, or restating an ingested document is
+not a finding.** `confirmed` requires an *observed effect* — an unauthorized tool
+action, a cross-principal/cross-workspace read, data/prompt exfiltration, a
+poisoned context that persists or crosses a boundary, or a downstream sink firing
+on model output. Authorization and isolation must be enforced by the runtime, not
+by the model's judgement; input/output guards reduce, never eliminate — test for
+bypass. Measure coverage with `tools/benchmark.py` against your own labs.
 
 ## 6. Hunt for variants
 

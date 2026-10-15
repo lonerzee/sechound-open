@@ -49,13 +49,13 @@ request
 
 ## Components
 
-### Planner (`tools/planner.py`)
+### Planner (`prompts/planner.md`, driven by `tools/run.py`)
 Takes a free-text request and the target's knowledge (service map, prior
 findings, invariants) and emits ranked hypotheses. Each hypothesis is
 *located* (file:line or endpoint) and *reachable* (an argument for why an
 attacker can reach the sink). Unlocated hypotheses are not actionable.
 
-### Executor (`tools/executor.py`)
+### Executor (`prompts/executor.md`, driven by `tools/run.py`)
 Runs the hunt for each hypothesis: static grep/AST queries, a dispatched
 sub-agent (`agents/`), or a DAST template. Output is always a
 `candidate (code-only)` stub — never a confirmed finding. The executor does not
@@ -88,6 +88,46 @@ Final two-lane review at engagement completion: a **static** lane re-reads the
 code path, a **counter** lane argues the finding is a false positive. A finding
 that survives both ships.
 
+### Falsifiers (`tools/tenant_diff.py`, `tools/mcp_probe.py`, `tools/rag_probe.py`)
+
+A falsifier is the tool that turns a class's playbook into proof. Each has a
+pure, unit-tested verdict core and exits non-zero only on a confirm-grade signal,
+so it can drive a `verify_finding` repro contract's `expected_signals`:
+
+- `tenant_diff` — two-identity diff for web IDOR/BOLA (`cross_tenant_leak`).
+- `mcp_probe` — MCP JSON-RPC (HTTP + stdio): two-principal workspace-IDOR,
+  rug-pull tool-definition change, tool-result injection exposure.
+- `rag_probe` — plant→retrieve-later→diff for RAG/embedding/memory poisoning
+  (cross-context + persistence), with a positive control.
+
+**Invariant: a falsifier never confuses "couldn't reach the target" with "safe".**
+On a transport failure (unreachable host, HTTP ≥400, a failed corpus adapter) it
+returns `inconclusive` with a distinct non-zero exit — never `isolation_holds` /
+`stable` / `0 hits`. A green result only ever means a test that actually ran.
+
+### Grounding gate (`tools/grounding_gate.py`)
+
+A mechanical anti-hallucination check over the registry: every claim a
+`confirmed` finding makes must trace to a logged observation — a signal in
+captured repro output, a quote that appears in the cited source, or a `file:line`
+that exists. Confirmed-with-no-evidence or a hallucinated citation is flagged
+`ungrounded` and the gate exits non-zero. It is the registry-level counterpart to
+the per-finding kill gate.
+
+## Ops & measurement
+
+- **Benchmark** (`tools/benchmark.py`, `bench/suite.yaml`) — runs the real
+  falsifiers/DAST against bundled loopback labs (`examples/vulnerable_*.py`) and
+  scores detection per class **with the conditions recorded** (box level, hints).
+  It is a regression gate / plumbing smoke test, not an independent efficacy
+  number. `--autostart` refuses a busy port and verifies lab identity first.
+- **Skill miner** (`tools/skill_miner.py`) — mines a corpus of disclosed reports
+  into hunt skills where every pattern is attributed to its source report.
+- **Skill lint** (`tools/skill_lint.py`, CI) — fails on structural gaps or a
+  profile validator / skill tool-reference with no backing `tools/*.py`; warns on
+  `doc-only` skills so the executable-vs-manual boundary is visible.
+- **Doctor** (`tools/doctor.py`) — preflight over backend/deps/tools/config.
+
 ## Orchestration
 
 For multi-class or multi-service work, the orchestrator fans hypotheses out to
@@ -119,7 +159,7 @@ shortlist. The survivors flow into the same verify → critic path. See
 ## Profiles (`profiles/`)
 
 The core is domain-neutral; a **profile** is a domain pack (web-appsec, secrets,
-cloud-iac, deps, binary, llm) that layers on domain-specific FP patterns,
+cloud-iac, deps, binary, llm, agentic, mcp) that layers on domain-specific FP patterns,
 invariants, the relevant hunt skills, and validators. The planner/hunters/critic
 load the active profile on top of the generic core. A binary or cloud researcher
 uses (or writes) their profile without touching the engine. See

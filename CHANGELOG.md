@@ -32,6 +32,12 @@ All notable changes to this project are documented here. Format loosely follows
   prompt-injection → `llm`) instead of hardcoding `web`.
 
 ### Added
+- **`sechound` CLI exposes the new tools** — `mcp-probe`, `rag-probe`,
+  `grounding-gate`, `benchmark`, `skill-miner`, `skill-lint` are now umbrella
+  subcommands (a test asserts every subcommand resolves to a module with a
+  `main()`). ARCHITECTURE/METHODOLOGY docs updated for the falsifiers, grounding
+  gate, ops tooling, and the AI/MCP method (and fixed stale
+  `tools/planner.py`/`executor.py` references).
 - **Skill depth lint (+ CI gate).** `tools/skill_lint.py` fails on structural
   gaps (missing frontmatter/sections) and broken wiring (a profile validator or
   a skill tool reference with no backing `tools/*.py`), and warns on "doc-only"

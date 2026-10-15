@@ -6,6 +6,11 @@ All notable changes to this project are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Skill depth lint (+ CI gate).** `tools/skill_lint.py` fails on structural
+  gaps (missing frontmatter/sections) and broken wiring (a profile validator or
+  a skill tool reference with no backing `tools/*.py`), and warns on "doc-only"
+  skills so prose-without-mechanism is visible instead of silent — the check
+  that would have caught shipping 16 prose-only skills. Wired into CI.
 - **Benchmark with condition tracking.** `tools/benchmark.py` + `bench/suite.yaml`
   run the real probes against the bundled labs and score detection per class,
   recording the conditions (box level, hints) alongside the score — the one

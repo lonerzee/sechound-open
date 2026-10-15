@@ -6,6 +6,11 @@ All notable changes to this project are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Disclosed-report → skill miner.** `tools/skill_miner.py` ingests a corpus of
+  disclosed reports and emits a hunt-skill playbook per class where every pattern
+  (sink / control / bypass / chain) is attributed to the report(s) it came from —
+  auditable instead of asserted. Ships a generic `profiles/disclosures/` sample
+  so it runs offline; refuses to clobber a hand-written skill without `--force`.
 - **Grounding gate (anti-hallucination).** `tools/grounding_gate.py` enforces
   that every claim a `confirmed` finding makes traces to a logged observation —
   a signal in captured repro output, or a quote that actually appears in the

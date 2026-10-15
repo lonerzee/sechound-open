@@ -1,0 +1,56 @@
+[
+  {
+    "id": "RPT-0001", "url": "https://disclosures.example.test/RPT-0001",
+    "vuln_class": "ssrf", "severity": "high",
+    "title": "Blind SSRF via webhook URL to cloud metadata",
+    "sink": "user-supplied webhook/callback URL fetched server-side",
+    "control": "egress allow-list + block of link-local/metadata ranges",
+    "bypass": "DNS rebinding and decimal/octal IP encodings of 169.254.169.254",
+    "chain": "SSRF to instance metadata -> steal role credentials -> cloud pivot"
+  },
+  {
+    "id": "RPT-0002", "url": "https://disclosures.example.test/RPT-0002",
+    "vuln_class": "ssrf", "severity": "high",
+    "title": "SSRF in PDF/screenshot renderer via embedded resource",
+    "sink": "HTML/markdown renderer that fetches embedded image/stylesheet URLs",
+    "control": "renderer network isolation / no outbound from the render sandbox",
+    "bypass": "redirect from an allowed host to an internal host (open redirect chain)",
+    "chain": "SSRF -> internal admin endpoint reachable only from the render host"
+  },
+  {
+    "id": "RPT-0003", "url": "https://disclosures.example.test/RPT-0003",
+    "vuln_class": "idor", "severity": "high",
+    "title": "IDOR on invoice export by sequential id",
+    "sink": "GET /export/{id} resolving by id without an owner scope",
+    "control": "row-level ownership filter injected below the handler",
+    "bypass": "id in a nested body field the authorization middleware does not inspect",
+    "chain": "IDOR read of another tenant's invoice -> PII disclosure"
+  },
+  {
+    "id": "RPT-0004", "url": "https://disclosures.example.test/RPT-0004",
+    "vuln_class": "idor", "severity": "critical",
+    "title": "IDOR write reassigns resource owner",
+    "sink": "PUT /resources/{id} accepting an owner_id field",
+    "control": "server derives owner from the session, ignores client owner_id",
+    "bypass": "owner_id accepted on PATCH even though PUT is guarded",
+    "chain": "IDOR write -> reassign ownership -> account/resource takeover"
+  },
+  {
+    "id": "RPT-0005", "url": "https://disclosures.example.test/RPT-0005",
+    "vuln_class": "prompt-injection", "severity": "high",
+    "title": "Indirect prompt injection via ingested support ticket",
+    "sink": "agent that summarizes untrusted ticket text with tool access",
+    "control": "privilege separation: tools authorize the caller, not the model",
+    "bypass": "instructions hidden in an attachment the classifier did not scan",
+    "chain": "indirect injection -> tool-driven data exfil to an attacker endpoint"
+  },
+  {
+    "id": "RPT-0006", "url": "https://disclosures.example.test/RPT-0006",
+    "vuln_class": "prompt-injection", "severity": "medium",
+    "title": "System prompt leak via format-confusion",
+    "sink": "chat endpoint echoing a templated system preamble",
+    "control": "no secrets in the prompt; preamble carries no standalone capability",
+    "bypass": "ask for output in a serialization format that dumps the context",
+    "chain": "system-prompt leak -> maps tool surface -> targeted injection"
+  }
+]

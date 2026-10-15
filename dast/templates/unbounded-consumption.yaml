@@ -1,0 +1,17 @@
+# Unbounded consumption / denial-of-wallet (OWASP LLM10-style, also API4). A
+# single request drives large amplification because the size parameter is
+# uncapped. The benchmark measures the amplification ratio; this template flags
+# that the uncapped count is honored at all.
+id: unbounded-consumption-amplify
+info:
+  name: Uncapped amplification parameter (denial-of-wallet)
+  severity: medium
+  service: api
+requests:
+  - method: GET
+    path: /api/expand?n=10000
+    headers: {}
+    body: null
+    matchers:
+      status: [200]
+      words: ['"count": 10000']       # the uncapped count was honored

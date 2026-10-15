@@ -1,0 +1,17 @@
+# Broken function-level authz / BFLA (OWASP API5:2023). Run this as a LOW-PRIV
+# identity (e.g. --header "X-Token: tokB"). A privileged function that answers a
+# non-privileged caller is the finding; prove the call SUCCEEDED, not just reached.
+id: bfla-admin-function
+info:
+  name: Admin function reachable by a non-admin principal
+  severity: high
+  service: api
+requests:
+  - method: GET
+    path: /api/admin/stats
+    headers: {}
+    body: null
+    matchers:
+      status: [200]
+      words: ["revenue"]              # admin-only data returned
+      negative_status: [401, 403]

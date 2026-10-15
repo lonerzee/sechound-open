@@ -6,6 +6,12 @@ All notable changes to this project are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **DAST templates + a vulnerable lab for the new classes.** The bundled
+  `examples/vulnerable_target.py` now plants mass-assignment (API3), BFLA (API5)
+  and unbounded-consumption bugs, each with a safe-route contrast; three new
+  `dast/templates/` fire against them. A second lab, `examples/vulnerable_mcp.py`
+  (HTTP + stdio), plants an MCP workspace-IDOR that `mcp_probe` proves live.
+  `mcp_probe` gained a **stdio transport** (most real MCP servers run that way).
 - **Executable AI validators (proof, not prose).** `tools/mcp_probe.py` — an MCP
   JSON-RPC falsifier (two-principal workspace-IDOR diff, rug-pull tool-definition
   detection, tool-result-injection exposure, credential-passthrough), and

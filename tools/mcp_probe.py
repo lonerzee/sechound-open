@@ -42,6 +42,8 @@ import argparse
 import hashlib
 import json
 import re
+import shlex
+import subprocess
 import sys
 import urllib.request
 from typing import Callable
@@ -190,6 +192,38 @@ def http_transport(url: str, headers: list[str], timeout: int) -> Transport:
     return _send
 
 
+def stdio_transport(command: str, timeout: int = 30) -> Transport:
+    """Transport for a stdio MCP server: spawn it and exchange newline-delimited
+    JSON-RPC. Many real MCP servers run this way (e.g. `npx some-mcp-server`)."""
+    proc = subprocess.Popen(
+        shlex.split(command), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL, text=True, bufsize=1)
+
+    def _send(req: dict) -> dict:
+        if proc.poll() is not None:
+            return {"error": {"code": -32000, "message": "server exited"}}
+        try:
+            proc.stdin.write(json.dumps(req) + "\n")
+            proc.stdin.flush()
+        except BrokenPipeError:
+            return {"error": {"code": -32000, "message": "broken pipe"}}
+        # read until a line parses as this request's JSON-RPC response
+        for _ in range(100):
+            line = proc.stdout.readline()
+            if not line:
+                return {"error": {"code": -32000, "message": "no response"}}
+            line = line.strip()
+            if line.startswith("{"):
+                try:
+                    resp = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if resp.get("id") == req.get("id") or "result" in resp or "error" in resp:
+                    return resp
+        return {"error": {"code": -32000, "message": "no matching response"}}
+    return _send
+
+
 class MCPClient:
     """Minimal MCP JSON-RPC client over a pluggable transport."""
 
@@ -276,6 +310,8 @@ def main(argv: list[str] | None = None) -> int:
     _common(pi)
     pi.add_argument("--header-a", action="append", default=[], help="owner header (repeatable)")
     pi.add_argument("--header-b", action="append", default=[], help="attacker header (repeatable)")
+    pi.add_argument("--stdio-a", help="owner stdio MCP command (instead of --url)")
+    pi.add_argument("--stdio-b", help="attacker stdio MCP command (instead of --url)")
     pi.add_argument("--tool", help="tool name to call")
     pi.add_argument("--args", default="{}", help="JSON arguments naming A's object")
     pi.add_argument("--resource", help="resource URI to read (instead of a tool)")
@@ -283,16 +319,22 @@ def main(argv: list[str] | None = None) -> int:
     pr = sub.add_parser("rug-pull", help="snapshot/compare tool definitions")
     _common(pr)
     pr.add_argument("--header-a", action="append", default=[])
+    pr.add_argument("--stdio", help="stdio MCP command (instead of --url)")
     pr.add_argument("--snapshot", help="write current tool fingerprints here")
     pr.add_argument("--compare", help="compare current fingerprints against this file")
 
     args = ap.parse_args(argv)
 
     if args.cmd == "workspace-idor":
-        if not args.url:
-            sys.exit("--url required (or import check_workspace_idor with a transport)")
-        ca = MCPClient(http_transport(args.url, args.header_a, args.timeout))
-        cb = MCPClient(http_transport(args.url, args.header_b, args.timeout))
+        if args.stdio_a and args.stdio_b:
+            ta = stdio_transport(args.stdio_a, args.timeout)
+            tb = stdio_transport(args.stdio_b, args.timeout)
+        elif args.url:
+            ta = http_transport(args.url, args.header_a, args.timeout)
+            tb = http_transport(args.url, args.header_b, args.timeout)
+        else:
+            sys.exit("supply --url (+ --header-a/--header-b) or --stdio-a/--stdio-b")
+        ca, cb = MCPClient(ta), MCPClient(tb)
         ca.initialize(); cb.initialize()
         res = check_workspace_idor(
             ca, cb, tool=args.tool,
@@ -300,9 +342,12 @@ def main(argv: list[str] | None = None) -> int:
         return _emit(res, args.json)
 
     if args.cmd == "rug-pull":
-        if not args.url:
-            sys.exit("--url required")
-        c = MCPClient(http_transport(args.url, args.header_a, args.timeout))
+        if args.stdio:
+            c = MCPClient(stdio_transport(args.stdio, args.timeout))
+        elif args.url:
+            c = MCPClient(http_transport(args.url, args.header_a, args.timeout))
+        else:
+            sys.exit("supply --url or --stdio")
         c.initialize()
         current = tool_def_fingerprint(c.tools_list())
         if args.snapshot:

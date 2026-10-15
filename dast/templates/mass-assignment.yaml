@@ -1,0 +1,16 @@
+# Mass assignment / BOPLA (OWASP API3:2023). Send privileged fields the client
+# should not control; if they are reflected/persisted, the server over-binds.
+# Confirm the EFFECT (privilege took hold) with a follow-up read, not just reflection.
+id: mass-assignment-privileged-field
+info:
+  name: Mass assignment accepts privileged fields (role/is_admin)
+  severity: high
+  service: api
+requests:
+  - method: POST
+    path: /api/profile
+    headers: {Content-Type: application/json}
+    body: {"name": "probe", "role": "admin", "is_admin": true}
+    matchers:
+      status: [200]
+      words: ['"role": "admin"', '"is_admin": true']   # privileged fields echoed back

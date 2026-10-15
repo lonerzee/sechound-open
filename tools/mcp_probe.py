@@ -52,6 +52,19 @@ from typing import Callable
 Transport = Callable[[dict], dict]
 
 CONFIRM_GRADE = {"cross_workspace_leak", "rug_pull"}
+# Our transports tag unreachable/protocol failures with these codes. A failure
+# here means "could not exercise the target" — never "target is safe".
+TRANSPORT_FAIL_CODES = {-32000, -32700}
+INCONCLUSIVE_EXIT = 3
+
+
+def transport_failed(resp: dict) -> bool:
+    """True if a response is a transport/protocol failure (not an application
+    result or a legitimate server-side authz denial)."""
+    if not isinstance(resp, dict):
+        return True
+    err = resp.get("error")
+    return bool(err) and err.get("code") in TRANSPORT_FAIL_CODES
 
 
 # --------------------------------------------------------------------------
@@ -172,6 +185,10 @@ def http_transport(url: str, headers: list[str], timeout: int) -> Transport:
             with urllib.request.urlopen(request, timeout=timeout) as r:
                 body = r.read().decode(errors="replace")
         except urllib.error.HTTPError as e:                      # noqa: F821
+            # MCP returns 200 for JSON-RPC-level errors; a 4xx/5xx is the
+            # transport/auth layer failing — surface it, don't read as a result.
+            if e.code >= 400:
+                return {"error": {"code": -32000, "message": f"http {e.code}"}}
             body = e.read().decode(errors="replace")
         except Exception as e:  # network/transport error → JSON-RPC-shaped error
             return {"error": {"code": -32000, "message": f"transport: {e}"}}
@@ -246,6 +263,14 @@ class MCPClient:
     def tools_list(self) -> list[dict]:
         return (self._rpc("tools/list").get("result") or {}).get("tools", [])
 
+    def list_tools(self) -> tuple[list[dict], bool]:
+        """(tools, reachable). reachable=False on a transport failure, so an
+        unreachable server is never mistaken for a server with zero tools."""
+        resp = self._rpc("tools/list")
+        if transport_failed(resp):
+            return [], False
+        return (resp.get("result") or {}).get("tools", []), True
+
     def tools_call(self, name: str, arguments: dict) -> dict:
         return self._rpc("tools/call", {"name": name, "arguments": arguments})
 
@@ -260,17 +285,25 @@ class MCPClient:
 def check_workspace_idor(client_a: MCPClient, client_b: MCPClient, *,
                          tool: str | None, args: dict | None,
                          resource_uri: str | None) -> dict:
-    def _invoke(c: MCPClient) -> tuple[bool, str]:
-        if resource_uri:
-            return call_outcome(c.resources_read(resource_uri))
-        return call_outcome(c.tools_call(tool, args or {}))
+    def _invoke(c: MCPClient) -> tuple[dict, bool, str]:
+        resp = c.resources_read(resource_uri) if resource_uri \
+            else c.tools_call(tool, args or {})
+        ok, text = call_outcome(resp)
+        return resp, ok, text
 
-    ok_a, text_a = _invoke(client_a)
-    ok_b, text_b = _invoke(client_b)
-    verdict = classify_workspace_idor(ok_a, text_a, ok_b, text_b)
+    resp_a, ok_a, text_a = _invoke(client_a)
+    resp_b, ok_b, text_b = _invoke(client_b)
+    # A transport failure on EITHER principal means we never exercised the
+    # target — inconclusive, never "isolation_holds". (A denied call is a
+    # server-side error, not a transport failure, and still judges normally.)
+    if transport_failed(resp_a) or transport_failed(resp_b):
+        verdict = "inconclusive"
+    else:
+        verdict = classify_workspace_idor(ok_a, text_a, ok_b, text_b)
     return {"check": "workspace-idor", "verdict": verdict,
             "target": resource_uri or f"tool:{tool}",
             "owner_ok": ok_a, "attacker_ok": ok_b,
+            "transport_failed": transport_failed(resp_a) or transport_failed(resp_b),
             "bodies_identical": text_a == text_b and bool(text_a.strip())}
 
 
@@ -304,7 +337,11 @@ def _emit(result: dict, as_json: bool) -> int:
         for k, v in result.items():
             if k not in ("check", "verdict"):
                 print(f"  {k}: {v}")
-    return 2 if result["verdict"] in CONFIRM_GRADE else 0
+    if result["verdict"] in CONFIRM_GRADE:
+        return 2
+    if result["verdict"] == "inconclusive":
+        return INCONCLUSIVE_EXIT      # distinct: "couldn't exercise", not "safe"
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -376,7 +413,14 @@ def main(argv: list[str] | None = None) -> int:
         else:
             sys.exit("supply --url or --stdio")
         c.initialize()
-        current = tool_def_fingerprint(c.tools_list())
+        tools, reachable = c.list_tools()
+        if not reachable:
+            # never write a snapshot of, or declare 'stable' against, a server
+            # we couldn't reach — that would read as "no poisoning".
+            res = {"check": "rug-pull", "verdict": "inconclusive",
+                   "reason": "tools/list transport failure — target unreachable"}
+            return _emit(res, args.json)
+        current = tool_def_fingerprint(tools)
         if args.snapshot:
             with open(args.snapshot, "w") as fh:
                 json.dump(current, fh, indent=2)

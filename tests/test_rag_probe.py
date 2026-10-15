@@ -46,3 +46,18 @@ def test_persistence_confirms_on_durable_store():
     res = probe_persistence(InMemoryCorpus(scoped=True), identity="tenantA")
     assert res["verdict"] == "memory_persists"
     assert res["verdict"] in rag_probe.CONFIRM_GRADE
+
+
+# ---- a failed adapter must be inconclusive, never "safe" -----------------
+
+def test_failed_ingest_is_inconclusive_not_isolation():
+    # ingest command exits non-zero (broken auth/endpoint) → must NOT read as safe
+    bad = rag_probe.CommandCorpus(ingest_cmd="false", query_cmd="true")
+    res = probe_cross_context(bad, planter="tenantA", reader="tenantB")
+    assert res["verdict"] == "inconclusive" and "error" in res
+
+
+def test_failed_query_is_inconclusive():
+    bad = rag_probe.CommandCorpus(ingest_cmd="true", query_cmd="false")
+    res = probe_persistence(bad, identity="tenantA")
+    assert res["verdict"] == "inconclusive"

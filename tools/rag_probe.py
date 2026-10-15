@@ -41,6 +41,12 @@ import uuid
 from typing import Protocol
 
 CONFIRM_GRADE = {"cross_context_leak", "memory_persists"}
+INCONCLUSIVE_EXIT = 3
+
+
+class CorpusError(Exception):
+    """The corpus adapter failed (ingest/query errored) — we could not exercise
+    the target, so the result is inconclusive, never 'isolation_holds'."""
 
 
 # --------------------------------------------------------------------------
@@ -110,14 +116,21 @@ class CommandCorpus:
     def ingest(self, identity: str, doc_id: str, text: str) -> None:
         cmd = self.ingest_cmd.format(auth=self.auth_map.get(identity, ""),
                                      identity=identity, doc_id=doc_id)
-        subprocess.run(shlex.split(cmd), input=text.encode(),
-                       capture_output=True, timeout=60)
+        p = subprocess.run(shlex.split(cmd), input=text.encode(),
+                           capture_output=True, timeout=60)
+        if p.returncode != 0:
+            # a failed ingest must NOT later read as a secure target
+            raise CorpusError(f"ingest failed (rc={p.returncode}): "
+                              f"{p.stderr.decode(errors='replace')[:200]}")
 
     def query(self, identity: str, query: str) -> list[str]:
         cmd = self.query_cmd.format(auth=self.auth_map.get(identity, ""),
                                     identity=identity, query=shlex.quote(query))
         out = subprocess.run(shlex.split(cmd), capture_output=True,
                              text=True, timeout=60)
+        if out.returncode != 0:
+            raise CorpusError(f"query failed (rc={out.returncode}): "
+                              f"{out.stderr[:200]}")
         return [out.stdout] if out.stdout else []
 
 
@@ -138,8 +151,13 @@ def _planted_doc(topic: str) -> tuple[str, str, str]:
 def probe_cross_context(adapter: CorpusAdapter, *, planter: str, reader: str,
                         topic: str = "onboarding") -> dict:
     marker, doc_id, text = _planted_doc(topic)
-    adapter.ingest(planter, doc_id, text)
-    retrieved = adapter.query(reader, topic)
+    try:
+        adapter.ingest(planter, doc_id, text)
+        retrieved = adapter.query(reader, topic)
+    except CorpusError as e:
+        return {"check": "rag-cross-context", "verdict": "inconclusive",
+                "marker": marker, "planter": planter, "reader": reader,
+                "error": str(e)}
     verdict = classify_cross_context(marker, retrieved)
     return {"check": "rag-cross-context", "verdict": verdict, "marker": marker,
             "planter": planter, "reader": reader,
@@ -149,9 +167,13 @@ def probe_cross_context(adapter: CorpusAdapter, *, planter: str, reader: str,
 def probe_persistence(adapter: CorpusAdapter, *, identity: str,
                       topic: str = "onboarding") -> dict:
     marker, doc_id, text = _planted_doc(topic)
-    adapter.ingest(identity, doc_id, text)
-    same_ctx = adapter.query(identity, topic)       # session 1
-    later = adapter.query(identity, topic)          # a later session (fresh query)
+    try:
+        adapter.ingest(identity, doc_id, text)
+        same_ctx = adapter.query(identity, topic)   # session 1
+        later = adapter.query(identity, topic)      # a later session (fresh query)
+    except CorpusError as e:
+        return {"check": "rag-persistence", "verdict": "inconclusive",
+                "marker": marker, "identity": identity, "error": str(e)}
     verdict = classify_persistence(marker, same_ctx, later)
     return {"check": "rag-persistence", "verdict": verdict, "marker": marker,
             "identity": identity, "retrieved_same_ctx": len(same_ctx),
@@ -171,7 +193,11 @@ def _emit(result: dict, as_json: bool) -> int:
         for k, v in result.items():
             if k not in ("check", "verdict"):
                 print(f"  {k}: {v}")
-    return 2 if result["verdict"] in CONFIRM_GRADE else 0
+    if result["verdict"] in CONFIRM_GRADE:
+        return 2
+    if result["verdict"] == "inconclusive":
+        return INCONCLUSIVE_EXIT      # adapter failed — "couldn't exercise", not "safe"
+    return 0
 
 
 def _build_adapter(args) -> CorpusAdapter:

@@ -6,6 +6,11 @@ All notable changes to this project are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Grounding gate (anti-hallucination).** `tools/grounding_gate.py` enforces
+  that every claim a `confirmed` finding makes traces to a logged observation —
+  a signal in captured repro output, or a quote that actually appears in the
+  cited source file. Confirmed-with-no-evidence or hallucinated file:line is
+  flagged `ungrounded` and the gate exits non-zero (CI/pipeline-usable).
 - **DAST templates + a vulnerable lab for the new classes.** The bundled
   `examples/vulnerable_target.py` now plants mass-assignment (API3), BFLA (API5)
   and unbounded-consumption bugs, each with a safe-route contrast; three new

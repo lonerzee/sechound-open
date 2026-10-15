@@ -107,6 +107,10 @@ Every stage's prompt lives in `prompts/`; the orchestration logic is in
 - **Invariant-breaker** — off-taxonomy hunting: state the invariants the system
   *claims* to hold, then try to falsify them. Template in
   `config/invariants.example.yaml`.
+- **Grounding gate** — a confirmed finding must trace every claim to a logged
+  observation (captured repro output, or a quote that really appears in the
+  cited source). Confirmed-with-no-evidence or a hallucinated `file:line` is
+  flagged `ungrounded` and the gate exits non-zero. See `tools/grounding_gate.py`.
 - **Skills & agents** — reusable hunt playbooks (`skills/`) and specialized
   sub-agents (`agents/`) the orchestrator can dispatch in parallel.
 
@@ -132,16 +136,48 @@ The orchestration entry points are documented in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); the methodology in
 [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md).
 
+## AI, MCP & agentic security
+
+Coverage maps to the OWASP **LLM Top 10 (2025)**, the OWASP **Agentic Top 10
+(ASI01–ASI10)** and the **MCP** attack surface (see
+[`docs/VULN_TAXONOMY.md`](docs/VULN_TAXONOMY.md)) — and, as everywhere else, a
+finding is `confirmed` only on an **observed effect**, never the model
+"agreeing". The AI classes come with their own falsifiers, not just playbooks:
+
+```bash
+# MCP: prove a cross-workspace tool IDOR with two principals (HTTP or stdio)
+python3 tools/mcp_probe.py workspace-idor --url https://mcp.example.test/mcp \
+    --header-a "Authorization: Bearer A" --header-b "Authorization: Bearer B" \
+    --tool get_resource --args '{"resource_id":"R1"}'   # -> cross_workspace_leak
+
+# MCP: detect a tool-definition rug-pull around an approval
+python3 tools/mcp_probe.py rug-pull --url ... --snapshot defs.json    # then later: --compare defs.json
+
+# RAG / agent memory: prove poisoning persists or crosses a context boundary
+python3 tools/rag_probe.py cross-context \
+    --ingest-cmd '...' --query-cmd '...' --auth 'tenantA=...' --auth 'tenantB=...'
+```
+
+Everything above is proven end-to-end against bundled, loopback-only vulnerable
+labs (`examples/vulnerable_target.py`, `examples/vulnerable_mcp.py`). Measure it:
+
+```bash
+python3 tools/benchmark.py --autostart          # detection rate + conditions, no setup
+```
+
 ## What's in the box
 
 - **Registry** (`tools/findings_db.py`, `ingest`) — root-cause de-duplication, SARIF export.
 - **Scanner interop** — `tools/import_sarif.py` (semgrep/CodeQL/nuclei/Trivy/grype/gitleaks) + `tools/triage.py` (LLM true/false-positive triage).
 - **Model-agnostic seam** (`tools/llm.py`) — Claude CLI / Ollama / Anthropic / OpenAI-compatible / Gemini.
 - **Pipeline** — `run` (plan→execute→verify→critic→compound), `verify_finding`, `critic`, `ultrareview`, `compounder`, `orchestrate`.
-- **Domain packs** — [`profiles/`](profiles/) (web-appsec, secrets, cloud-iac, deps, binary, llm) + a [hunt-skill library](skills/) spanning [many vuln classes](docs/VULN_TAXONOMY.md).
+- **Domain packs** — [`profiles/`](profiles/) (web-appsec, secrets, cloud-iac, deps, binary, **llm, agentic, mcp**) + a [hunt-skill library](skills/) spanning [many vuln classes](docs/VULN_TAXONOMY.md), mapped to the OWASP LLM Top 10, the OWASP Agentic Top 10 (ASI), and the MCP attack surface.
 - **Agents** — [`agents/`](agents/) specialist roles (recon, web/code/cloud/deps/secrets/binary hunters, triage, validator, chain-builder, reporter) dispatchable as a swarm.
-- **Validators** — `tenant_diff` (two-identity proof), `verify_finding` (re-runnable repro contracts; refuses to exec untrusted-source repros without `--allow-exec`).
-- **DAST** — `tools/dast.py` + nuclei-style templates.
+- **Validators** — `tenant_diff` (two-identity web proof), **`mcp_probe`** (MCP JSON-RPC: workspace-IDOR, rug-pull, tool-result injection — HTTP + stdio), **`rag_probe`** (RAG/memory poisoning: cross-context + persistence), `verify_finding` (re-runnable repro contracts; refuses untrusted-source repros without `--allow-exec`).
+- **Grounding gate** — `tools/grounding_gate.py` rejects any `confirmed` finding whose claims aren't backed by a logged observation (captured output or a real cited source) — mechanical anti-hallucination.
+- **DAST** — `tools/dast.py` + nuclei-style templates (incl. mass-assignment/BOPLA, BFLA, unbounded-consumption).
+- **Benchmark** — `tools/benchmark.py` scores detection against bundled vulnerable labs with **condition tracking** (box level, hints) so results are measurable, not asserted.
+- **Skill miner** — `tools/skill_miner.py` turns a corpus of disclosed reports into *cited* hunt skills; **skill lint** (`tools/skill_lint.py`, in CI) fails prose-without-mechanism.
 - **Ops** — `sechound doctor` (preflight: backend/deps/tools/config), `Dockerfile`, CI + sanitization gate.
 
 Ships with **no target data** — see [`SANITIZATION.md`](SANITIZATION.md) for the

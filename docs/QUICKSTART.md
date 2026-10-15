@@ -53,6 +53,27 @@ sechound report --status candidate --format md > triage.md
 `triage` batches findings per call (`--batch-size`, `--max-batches` to cap cost,
 `--skip-info` to drop noise), so a few-thousand-hit scan is a handful of calls.
 
+## AI / MCP / agentic falsifiers + the benchmark
+
+The spine isn't web-only. The AI classes ship their own proof tools, and a
+benchmark scores them against bundled loopback labs with no setup:
+
+```bash
+# detection rate per class, with the conditions it was measured under
+python3 tools/benchmark.py --autostart
+
+# prove an MCP cross-workspace tool IDOR (HTTP or stdio); see skills/hunt-mcp
+python3 tools/mcp_probe.py workspace-idor --url <mcp> \
+    --header-a "Authorization: Bearer A" --header-b "Authorization: Bearer B" \
+    --tool get_resource --args '{"resource_id":"R1"}'
+
+# prove RAG/memory poisoning persists or crosses a context boundary
+python3 tools/rag_probe.py cross-context --shared --json    # demo on an in-memory index
+
+# reject any confirmed finding not backed by a logged observation
+python3 tools/grounding_gate.py engagements/<id>
+```
+
 ## Docker
 
 ```bash

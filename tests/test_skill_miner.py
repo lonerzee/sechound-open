@@ -31,6 +31,12 @@ def test_render_skill_has_sections_and_citations():
     assert md.startswith("---\nname: hunt-idor")
 
 
+def test_mined_domain_matches_class():
+    mined = sm.mine(CORPUS)
+    assert "domain: llm" in sm.render_skill("prompt-injection", mined["prompt-injection"])
+    assert "domain: web" in sm.render_skill("ssrf", mined["ssrf"])
+
+
 def test_cli_writes_and_refuses_overwrite(tmp_path, capsys):
     corpus = ROOT / "profiles" / "disclosures" / "sample_disclosures.json"
     assert sm.main(["--corpus", str(corpus), "--out", str(tmp_path), "--class", "ssrf"]) == 0

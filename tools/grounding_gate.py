@@ -10,11 +10,14 @@ that actually appears in the source it cites. A finding that was promoted to
 does not exist, is flagged `ungrounded` (the vibe-confirmed case) and the gate
 exits non-zero.
 
-Two backings count as grounding:
-  * runtime  — the claimed signal appears in `evidence.live_evidence` (the repro
-               output verify_finding captured).
+Three backings count as grounding:
+  * runtime  — the claimed signal appears in `evidence.live_evidence`, i.e. the
+               repro actually emitted its signal (a confirmed finding with no or
+               empty captured output fails this).
   * static   — a citation {quote, source} whose quote actually appears in the
-               cited source file (catches hallucinated file:line / invented code).
+               cited source file (catches invented code).
+  * file     — a `files: ["path:line"]` claim whose file exists and whose line is
+               in range (catches a hallucinated file:line).
 
 A confirmed finding is `grounded` only if it carries at least one claim AND every
 claim it makes is backed. Candidates are reported but not blocked.
@@ -47,7 +50,27 @@ def extract_claims(finding: dict) -> list[dict]:
         if isinstance(cite, dict) and cite.get("quote"):
             claims.append({"kind": "citation", "text": str(cite["quote"]),
                            "source": cite.get("source")})
+    for ref in (finding.get("files") or []):
+        claims.append({"kind": "file", "text": str(ref), "source": str(ref)})
     return claims
+
+
+def _file_claim_ok(ref: str, root: Path | None) -> bool:
+    """A files: ['path:line'] claim is grounded iff the file exists and, when a
+    line is given, the line is within the file."""
+    if root is None:
+        return False
+    path, _, line = ref.partition(":")
+    p = root / path
+    if not p.is_file():
+        return False
+    if line.isdigit():
+        try:
+            n = sum(1 for _ in p.open(errors="replace"))
+        except OSError:
+            return False
+        return 1 <= int(line) <= n
+    return True
 
 
 def _source_text(source: str | None, root: Path | None) -> str | None:
@@ -62,6 +85,8 @@ def _source_text(source: str | None, root: Path | None) -> str | None:
 
 
 def claim_grounded(claim: dict, transcript: str, root: Path | None) -> bool:
+    if claim["kind"] == "file":
+        return _file_claim_ok(claim["text"], root)   # file:line existence
     text = claim["text"]
     if text and text in (transcript or ""):
         return True                            # runtime grounding
@@ -114,7 +139,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
-    findings, default_root = _load_findings(args)
+    try:
+        findings, default_root = _load_findings(args)
+    except (IsADirectoryError, FileNotFoundError, json.JSONDecodeError) as e:
+        sys.exit(f"[grounding] cannot read findings ({type(e).__name__}). "
+                 "Pass an engagement DIR as the positional arg, or a findings "
+                 "JSON file via --db.")
     root = Path(args.root) if args.root else default_root
     if not findings:
         print("[grounding] no findings to check", file=sys.stderr)

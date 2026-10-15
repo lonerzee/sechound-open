@@ -47,6 +47,29 @@ def test_hallucinated_citation_is_ungrounded(tmp_path):
 
 # ---- scope of enforcement -------------------------------------------------
 
+# ---- file:line grounding (reviewer MED) ----------------------------------
+
+def test_file_line_in_range_grounded(tmp_path):
+    (tmp_path / "a.py").write_text("l1\nl2\nl3\n")
+    f = _confirmed()
+    f["files"] = ["a.py:2"]
+    assert gg.classify_grounding(f, root=tmp_path)[0] == "grounded"
+
+
+def test_hallucinated_file_line_ungrounded(tmp_path):
+    (tmp_path / "a.py").write_text("l1\nl2\n")
+    f = _confirmed()
+    f["files"] = ["a.py:99999"]            # line does not exist
+    verdict, ung = gg.classify_grounding(f, root=tmp_path)
+    assert verdict == "ungrounded" and ung[0]["kind"] == "file"
+
+
+def test_nonexistent_file_ungrounded(tmp_path):
+    f = _confirmed()
+    f["files"] = ["does_not_exist.py:1"]
+    assert gg.classify_grounding(f, root=tmp_path)[0] == "ungrounded"
+
+
 def test_candidate_not_blocked():
     f = {"id": "X", "status": "candidate", "evidence": {}}
     assert gg.classify_grounding(f)[0] == "not_confirmed"

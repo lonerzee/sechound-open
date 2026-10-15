@@ -33,6 +33,17 @@ KEYWORDS = {  # seed triggers per class; the class name itself is always include
     "idor": "IDOR, BOLA, cross-tenant, object id, ownership, findById",
     "prompt-injection": "prompt injection, indirect injection, jailbreak, tool abuse, system prompt",
 }
+# class -> profile domain (drives which profile's controls load downstream)
+CLASS_DOMAIN = {
+    "prompt-injection": "llm", "rag-poisoning": "llm", "excessive-agency": "llm",
+    "mcp": "mcp", "agent-goal-hijack": "agentic", "rogue-agents": "agentic",
+    "cloud-misconfig": "cloud", "iac": "cloud", "secrets": "secrets",
+    "crypto": "secrets", "memory-safety": "binary", "deps": "deps",
+}
+
+
+def domain_for(cls: str) -> str:
+    return CLASS_DOMAIN.get(cls, "web")
 
 
 # --------------------------------------------------------------------------
@@ -76,7 +87,7 @@ def render_skill(cls: str, agg: dict) -> str:
     return f"""---
 name: hunt-{cls}
 description: Mined hunt playbook for {cls} — patterns attributed to disclosed reports.
-domain: web
+domain: {domain_for(cls)}
 ---
 
 # hunt-{cls}

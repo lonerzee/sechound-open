@@ -5,6 +5,18 @@ All notable changes to this project are documented here. Format loosely follows
 
 ## [Unreleased]
 
+### Fixed
+- **Silent-safe false negative in the AI validators** (adoption-review HIGH): an
+  unreachable/erroring MCP or RAG target was reported `stable`/`isolation_holds`
+  with a clean exit. Both now return `inconclusive` with a distinct non-zero exit
+  when the target could not be exercised (transport failure / HTTP ≥400 / a
+  non-zero corpus-adapter command), never "safe".
+- **Grounding gate** now validates `files: ["path:line"]` claims (hallucinated
+  file:line is flagged) and fails cleanly instead of tracebacking when `--db`
+  points at a directory.
+- **Skill miner** derives the skill `domain` from the vuln class (e.g.
+  prompt-injection → `llm`) instead of hardcoding `web`.
+
 ### Added
 - **Skill depth lint (+ CI gate).** `tools/skill_lint.py` fails on structural
   gaps (missing frontmatter/sections) and broken wiring (a profile validator or

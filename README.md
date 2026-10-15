@@ -158,7 +158,17 @@ python3 tools/rag_probe.py cross-context \
     --ingest-cmd '...' --query-cmd '...' --auth 'tenantA=...' --auth 'tenantB=...'
 ```
 
-Everything above is proven end-to-end against bundled, loopback-only vulnerable
+**Honest coverage:** executable *falsifiers* exist for a subset of classes —
+IDOR (`tenant_diff`), MCP workspace-IDOR/rug-pull/result-injection (`mcp_probe`),
+RAG/memory poisoning (`rag_probe`), and the DAST-templated web classes
+(mass-assignment, BFLA, unbounded-consumption). The rest of the taxonomy ships as
+disciplined, OWASP-mapped *manual* playbooks. `tools/skill_lint.py` labels every
+skill `doc-only` when it has no backing probe, so the automation boundary is
+visible rather than implied. A green probe only means something it could actually
+reach: the MCP/RAG falsifiers return `inconclusive` (distinct non-zero exit), not
+"safe", when the target is unreachable.
+
+Everything with a falsifier is proven end-to-end against bundled, loopback-only
 labs (`examples/vulnerable_target.py`, `examples/vulnerable_mcp.py`). Measure it:
 
 ```bash
@@ -176,7 +186,7 @@ python3 tools/benchmark.py --autostart          # detection rate + conditions, n
 - **Validators** — `tenant_diff` (two-identity web proof), **`mcp_probe`** (MCP JSON-RPC: workspace-IDOR, rug-pull, tool-result injection — HTTP + stdio), **`rag_probe`** (RAG/memory poisoning: cross-context + persistence), `verify_finding` (re-runnable repro contracts; refuses untrusted-source repros without `--allow-exec`).
 - **Grounding gate** — `tools/grounding_gate.py` rejects any `confirmed` finding whose claims aren't backed by a logged observation (captured output or a real cited source) — mechanical anti-hallucination.
 - **DAST** — `tools/dast.py` + nuclei-style templates (incl. mass-assignment/BOPLA, BFLA, unbounded-consumption).
-- **Benchmark** — `tools/benchmark.py` scores detection against bundled vulnerable labs with **condition tracking** (box level, hints) so results are measurable, not asserted.
+- **Benchmark** — `tools/benchmark.py` is a **regression gate / plumbing smoke test**: it runs the real probes against the bundled labs and records the conditions (box level, hints). A perfect score means the detection path fires end-to-end on known-planted bugs — the same project authors the labs and the probes, so it is *not* an independent efficacy number. Point it at your own labs for that.
 - **Skill miner** — `tools/skill_miner.py` turns a corpus of disclosed reports into *cited* hunt skills; **skill lint** (`tools/skill_lint.py`, in CI) fails prose-without-mechanism.
 - **Ops** — `sechound doctor` (preflight: backend/deps/tools/config), `Dockerfile`, CI + sanitization gate.
 
